@@ -285,13 +285,21 @@ export const mountBench: MountView = (root, ctx): View => {
   relabelers.push(() => { lampName.textContent = S().lamp })
   listen(lampBtn, 'click', () => a.setLamp(!a.lampOn))
 
-  // Dimming
-  const dimCtl = ctl('dimming'); ctls.set('dimming', dimCtl)
+  // Window cover (12): keeps room light out; does not dim the beam on the cathode
+  const dimCtl = ctl('windowCover'); ctls.set('windowCover', dimCtl)
   const dimLabel = htmlEl('label', { for: `${id}-dim`, class: 'ctl-label' }, dimCtl)
-  const dimSlider = htmlEl('input', { id: `${id}-dim`, type: 'range', min: 0, max: 100, step: 1, value: 100, class: 'bench-range' }, dimCtl)
+  const dimSlider = htmlEl('input', { id: `${id}-dim`, type: 'range', min: 0, max: 100, step: 1, value: 0, class: 'bench-range' }, dimCtl)
   const dimOut = htmlEl('p', { class: 'ctl-help' }, dimCtl)
-  relabelers.push(() => { dimLabel.textContent = S().dimming })
-  listen(dimSlider, 'input', () => a.setDimming(Number(dimSlider.value) / 100))
+  relabelers.push(() => { dimLabel.textContent = S().windowCover })
+  listen(dimSlider, 'input', () => a.setWindowCover(Number(dimSlider.value) / 100))
+
+  // Beam intensity (neutral-density filter), explore only
+  const beamCtl = ctl('beam', 'only-explore'); ctls.set('beam', beamCtl)
+  const beamLabel = htmlEl('label', { for: `${id}-beam`, class: 'ctl-label' }, beamCtl)
+  const beamSlider = htmlEl('input', { id: `${id}-beam`, type: 'range', min: 10, max: 100, step: 1, value: 100, class: 'bench-range' }, beamCtl)
+  const beamOut = htmlEl('p', { class: 'ctl-help' }, beamCtl)
+  relabelers.push(() => { beamLabel.textContent = S().beamIntensity })
+  listen(beamSlider, 'input', () => a.setBeamIntensity(Number(beamSlider.value) / 100))
 
   // Explore-only
   const catCtl = ctl('cathode', 'only-explore'); ctls.set('cathode', catCtl)
@@ -331,6 +339,9 @@ export const mountBench: MountView = (root, ctx): View => {
   const setDimVal = (() => { let l = -1; return (v: number) => { if (v !== l) { l = v; dimSlider.value = String(v) } } })()
   const setDimText = textSetter(dimOut)
   const setDimAria = attrSetter(dimSlider, 'aria-valuetext')
+  const setBeamVal = (() => { let l = -1; return (v: number) => { if (v !== l) { l = v; beamSlider.value = String(v) } } })()
+  const setBeamText = textSetter(beamOut)
+  const setBeamAria = attrSetter(beamSlider, 'aria-valuetext')
   const setLampChecked = attrSetter(lampBtn, 'aria-checked')
   const setLampStatus = textSetter(lampStatus)
   const setLampWarm = classSetter(lampCtl, 'is-warming')
@@ -415,10 +426,14 @@ export const mountBench: MountView = (root, ctx): View => {
     const warming = r.lampOn && r.lampBrightness < 1
     setLampWarm(warming)
     setLampStatus(!r.lampOn ? s.lampOff : warming ? fill(s.lampWarming, { pct: Math.floor(r.lampBrightness * 100) }) : s.lampOn)
-    const dim = Math.round(a.dimming * 100)
+    const dim = Math.round(a.windowCover * 100)
     setDimVal(dim)
-    const dimTxt = fill(s.dimmingValue, { pct: dim })
+    const dimTxt = fill(s.windowCoverValue, { pct: dim })
     setDimText(dimTxt); setDimAria(dimTxt)
+    const beam = Math.round(a.beamIntensity * 100)
+    setBeamVal(beam)
+    const beamTxt = fill(s.beamIntensityValue, { pct: beam })
+    setBeamText(beamTxt); setBeamAria(beamTxt)
     setCathodeVal(a.cathode)
     setStrayChk(String(a.stray_fraction !== null && a.stray_fraction > 0))
     setDirtyChk(String(a.dirty))

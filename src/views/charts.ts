@@ -289,7 +289,11 @@ export const mountCharts: MountView = (root, ctx): View => {
         c.font = fontPx(12)
         c.textAlign = 'left'
         c.textBaseline = 'bottom'
-        c.fillText(`${nf(nu0, 0)} THz`, X(nu0) + 8 * r, Y(0) - 8 * r)
+        const lbl = `${S().threshold} ${nf(nu0, 0)} THz`
+        if (X(nu0) + 8 * r + c.measureText(lbl).width > c.canvas.width - 4 * r) {
+          c.textAlign = 'right'
+          c.fillText(lbl, X(nu0) - 8 * r, Y(0) - 8 * r)
+        } else c.fillText(lbl, X(nu0) + 8 * r, Y(0) - 8 * r)
       }
     }
     // points with wavelength labels

@@ -2,7 +2,7 @@
 // scripts/teacher-key.ts writes the result to docs/teacher-key.md.
 import { STRAY_PRESET_FRACTION } from '../apparatus/index.ts'
 import {
-  E_C, H_Js, IDEAL, LAB, R_CELL_DIRTY_Ohm, expectedReading_V, getLine, linearFit, nuFromLambda, photonEnergy_eV,
+  E_C, H_Js, IDEAL, LAB, R_CELL_DIRTY_Ohm, R_INPUT_Ohm, expectedReading_V, getLine, linearFit, nuFromLambda, photonEnergy_eV,
   planckFromFit, steadyState_V,
 } from '../physics/index.ts'
 import type { CircuitInputs, HgLineId, Scenario } from '../physics/index.ts'
@@ -15,6 +15,8 @@ import { VISIBLE_LINES } from './task.ts'
 import { en } from './i18n/en.ts'
 
 type Extra = Partial<Omit<CircuitInputs, 'line'>>
+/** Explore with an error switch on: the real electrometer input resistance replaces the ideal 1e21 Ohm. */
+const WITH_INPUT: Extra = { R_input_Ohm: R_INPUT_Ohm }
 
 function plateaus(s: Scenario, extra: Extra = {}): number[] {
   return VISIBLE_LINES.map((line) => steadyState_V({ ...s.params, ...extra, line }))
@@ -31,7 +33,7 @@ const name = (l: HgLineId): string => `${l} ${getLine(l).lambda_nm.toFixed(0)} n
 const SUCCESS: Record<string, string> = {
   'find-line': 'Lamp on and the yellow line aligned on the cell (`lineOnCell() === "yellow"`).',
   'first-u0': `A settled yellow measurement within ±${FIRST_U0_TOL_V} V of the noise-free plateau of the mode (see table).`,
-  intensity: `Two settled measurements of the same line, one at dimming ≥ ${BRIGHT_MIN} and one at ≤ ${DIM_MAX}.`,
+  intensity: `Two settled measurements of the same line, one at beam intensity ≥ ${BRIGHT_MIN} and one at ≤ ${DIM_MAX}.`,
   planck: `Four distinct settled lines and a fit with h within ${PLANCK_REL_TOL * 100} % of ${h34(H_Js)}×10⁻³⁴ J·s.`,
   threshold: `Cathode Zn, lamp warm, a visible line aligned, key released ≥ ${THRESHOLD_WAIT_s} s ago and U < ${THRESHOLD_MAX_U_V * 1000} mV.`,
   'error-sources': 'Dirty or stray light on, four distinct settled lines measured with the error active, and a fit available.',
@@ -46,7 +48,7 @@ export function teacherKey(): string {
     '_Generated from the physics model by `npm run teacher-key`. Do not edit by hand; edit the model or the tasks._',
     '',
     'Values are noise-free equilibrium plateaus (what a student should read, to within needle reading of about 0.02 V).',
-    'Real runs approach the plateau asymptotically; the "settled" badge appears when the rate is below 1 mV/s.',
+    'Real runs approach the plateau asymptotically; the "settled" badge appears when the projected remaining rise (|dU/dt| times the local time constant) stays below 1 mV (or 0.1 % of U) for 5 s.',
     '',
     '## Expected plateaus U0',
     '',
@@ -67,19 +69,20 @@ export function teacherKey(): string {
     return `| ${label} | ${h34(f.h)} | ${pct(f.h)} | ${(f.slope * 1e12).toFixed(5)} | ${f.intercept.toFixed(3)} |`
   }
   push(row('Explore, clean', ex), row('Lab, clean', lb))
-  push(row('Explore, dirty photocell', plateaus(IDEAL, { R_cell_Ohm: R_CELL_DIRTY_Ohm })))
-  push(row(`Explore, stray light (${STRAY_PRESET_FRACTION})`, plateaus(IDEAL, { stray_fraction: STRAY_PRESET_FRACTION })))
+  push(row('Explore, dirty photocell', plateaus(IDEAL, { ...WITH_INPUT, R_cell_Ohm: R_CELL_DIRTY_Ohm })))
+  push(row(`Explore, stray light (${STRAY_PRESET_FRACTION})`, plateaus(IDEAL, { ...WITH_INPUT, stray_fraction: STRAY_PRESET_FRACTION })))
   push('', `True h = ${h34(H_Js)}×10⁻³⁴ J·s (e = ${(E_C / 1e-19).toFixed(4)}×10⁻¹⁹ C). The leaflet obtains 6.1×10⁻³⁴.`)
   push('The intercept of e·U0 vs ν is not the cathode work function (anode work function enters, leaflet eq. VII).', '')
 
   push('## Error sources: plateaus (explore)', '', '| Line | Clean (V) | Dirty (V) | Stray light (V) |', '|---|---|---|---|')
-  const dirty = plateaus(IDEAL, { R_cell_Ohm: R_CELL_DIRTY_Ohm })
-  const stray = plateaus(IDEAL, { stray_fraction: STRAY_PRESET_FRACTION })
+  const dirty = plateaus(IDEAL, { ...WITH_INPUT, R_cell_Ohm: R_CELL_DIRTY_Ohm })
+  const stray = plateaus(IDEAL, { ...WITH_INPUT, stray_fraction: STRAY_PRESET_FRACTION })
   VISIBLE_LINES.forEach((l, i) => push(`| ${name(l)} | ${v(ex[i]!)} | ${v(dirty[i]!)} | ${v(stray[i]!)} |`))
   push(
     '',
-    '- **Dirty photocell** (leakage 10¹² Ω): every plateau sags, the high ones more, so the slope and h fall slightly.',
-    '- **Stray light** (preset): the highest-U0 component (the UV line) charges the capacitor too and drags every reading towards one value, the low-frequency lines most. The slope collapses, so h is far too low. Real stray light is weaker but pushes the same way.',
+    '- **Dirty photocell** (leakage 10¹² Ω): every plateau sags, the high ones more, so the slope and h fall (see the table).',
+    '- **Stray light** (preset): photocurrent from the other, higher-U0 lines keeps the capacitor charged, so the low-frequency plateaus are lifted most and the slope falls. Because the explore source is bright, a stray fraction of only ~10⁻⁴ is enough; with more, yellow and green merge into one value.',
+    '- In Explore, either error switch also puts in the electrometer input resistance (10¹³ Ω) instead of the ideal 10²¹ Ω. Without it any stray current would charge every line to the UV U0 and h would be ~0.',
     '- Both effects give a **lower** h, so the answer to the `error-sources` prediction is "Lower".',
     '',
     '## Photon energies and the zinc threshold',

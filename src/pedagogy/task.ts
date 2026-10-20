@@ -5,7 +5,7 @@ import type { HgLineId } from '../physics/index.ts'
 import { IDEAL, LAB, steadyState_V } from '../physics/index.ts'
 
 export type ControlId =
-  | 'lamp' | 'arm' | 'dimming' | 'key' | 'range' | 'speed'
+  | 'lamp' | 'arm' | 'windowCover' | 'beam' | 'key' | 'range' | 'speed'
   | 'cathode' | 'stray' | 'dirty' | 'roomLights' | 'record' | 'fit'
 
 /** Contextual nudge keys; the text lives in the pedagogy dictionary under `hints.<key>`. */

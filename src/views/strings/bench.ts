@@ -22,8 +22,10 @@ interface BenchStrings {
   lampOff: string
   lampOn: string
   lampWarming: string // "Warming up {pct} %"
-  dimming: string
-  dimmingValue: string // "{pct} % open"
+  windowCover: string
+  windowCoverValue: string // "{pct} % covered"
+  beamIntensity: string
+  beamIntensityValue: string // "{pct} % of full beam"
   cathode: string
   cathodes: { photocell: string; Cs: string; Na: string; K: string; Zn: string }
   stray: string
@@ -47,7 +49,7 @@ const en: BenchStrings = {
     imaging: { name: 'Imaging lens', short: 'Lens', info: 'This lens focuses the image of the slit onto the emission window.' },
     prism: { name: 'Direct-vision prism', short: 'Prism', info: 'The prism splits white light into the mercury lines, each bent by a different amount.' },
     mirror: { name: 'Mirror', short: 'Mirror', info: 'The mirror folds the light path so the spectrum lands on the emission window.' },
-    window: { name: 'Emission window', short: 'Window', info: 'The spectrum forms here as thin lines. The dimming slider covers it when the room is too bright.' },
+    window: { name: 'Emission window', short: 'Window', info: 'The spectrum forms here as thin lines. The sliding cover (12) closes it when the room is too bright, to keep room light out. It does not weaken the beam on the cathode.' },
     arm: { name: 'Swivelling arm', short: 'Arm', info: 'Turn the arm with its thread guide to bring one spectral line in front of the photocell.' },
     lens: { name: 'Lens with slit diaphragm', short: 'Lens', info: 'This lens with a slit diaphragm picks one line from the window and focuses it onto the cathode.' },
     cell: { name: 'Photocell', short: 'Cell', info: 'Light hitting the cathode frees electrons, which charge the capacitor through the ring anode.' },
@@ -66,8 +68,10 @@ const en: BenchStrings = {
   lampOff: 'Off',
   lampOn: 'On',
   lampWarming: 'Warming up {pct} %',
-  dimming: 'Window dimming',
-  dimmingValue: '{pct} % open',
+  windowCover: 'Window cover (12)',
+  windowCoverValue: '{pct} % covered. Keeps room light out; the beam on the cell is unchanged.',
+  beamIntensity: 'Beam intensity (filter)',
+  beamIntensityValue: '{pct} % of the full beam (explore only; the real bench has no filter)',
   cathode: 'Cathode',
   cathodes: { photocell: 'Photocell (K)', Cs: 'Caesium', Na: 'Sodium', K: 'Potassium', Zn: 'Zinc' },
   stray: 'Stray light',
@@ -91,7 +95,7 @@ const es: BenchStrings = {
     imaging: { name: 'Lente de imagen', short: 'Lente', info: 'Esta lente enfoca la imagen de la rendija sobre la ventana de emisión.' },
     prism: { name: 'Prisma de visión directa', short: 'Prisma', info: 'El prisma separa la luz blanca en las rayas del mercurio; cada una se desvía un ángulo distinto.' },
     mirror: { name: 'Espejo', short: 'Espejo', info: 'El espejo pliega el camino de la luz para que el espectro caiga sobre la ventana de emisión.' },
-    window: { name: 'Ventana de emisión', short: 'Ventana', info: 'Aquí se forma el espectro como rayas finas. El regulador la tapa cuando la sala está demasiado iluminada.' },
+    window: { name: 'Ventana de emisión', short: 'Ventana', info: 'Aquí se forma el espectro como rayas finas. La tapa deslizante (12) la cierra cuando la sala está demasiado iluminada, para que no entre luz de la sala. No debilita el haz sobre el cátodo.' },
     arm: { name: 'Brazo giratorio', short: 'Brazo', info: 'Gira el brazo con su guía de rosca para poner una raya espectral frente a la fotocélula.' },
     lens: { name: 'Lente con diafragma de rendija', short: 'Lente', info: 'Esta lente con diafragma de rendija elige una raya de la ventana y la enfoca sobre el cátodo.' },
     cell: { name: 'Fotocélula', short: 'Célula', info: 'La luz que llega al cátodo libera electrones, que cargan el condensador a través del ánodo en anillo.' },
@@ -110,8 +114,10 @@ const es: BenchStrings = {
   lampOff: 'Apagada',
   lampOn: 'Encendida',
   lampWarming: 'Calentando {pct} %',
-  dimming: 'Regulador de la ventana',
-  dimmingValue: '{pct} % abierta',
+  windowCover: 'Tapa de la ventana (12)',
+  windowCoverValue: '{pct} % tapada. Evita que entre luz de la sala; el haz sobre la célula no cambia.',
+  beamIntensity: 'Intensidad del haz (filtro)',
+  beamIntensityValue: '{pct} % del haz completo (solo en Explorar; el montaje real no tiene filtro)',
   cathode: 'Cátodo',
   cathodes: { photocell: 'Fotocélula (K)', Cs: 'Cesio', Na: 'Sodio', K: 'Potasio', Zn: 'Cinc' },
   stray: 'Luz parásita',

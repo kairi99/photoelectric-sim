@@ -3,16 +3,16 @@
 _Generated from the physics model by `npm run teacher-key`. Do not edit by hand; edit the model or the tasks._
 
 Values are noise-free equilibrium plateaus (what a student should read, to within needle reading of about 0.02 V).
-Real runs approach the plateau asymptotically; the "settled" badge appears when the rate is below 1 mV/s.
+Real runs approach the plateau asymptotically; the "settled" badge appears when the projected remaining rise (|dU/dt| times the local time constant) stays below 1 mV (or 0.1 % of U) for 5 s.
 
 ## Expected plateaus U0
 
 | Line | ν (THz) | hν (eV) | Explore U0 (V) | Lab U0 (V, equilibrium) | Lab U0 (V, after 60 s) |
 |---|---|---|---|---|---|
-| yellow 578 nm | 519 | 2.15 | 0.625 | 0.587 | 0.581 |
-| green 546 nm | 549 | 2.27 | 0.750 | 0.701 | 0.698 |
-| blue 436 nm | 688 | 2.84 | 1.325 | 1.236 | 1.235 |
-| violet 405 nm | 741 | 3.06 | 1.544 | 1.404 | 1.398 |
+| yellow 578 nm | 519 | 2.15 | 0.616 | 0.592 | 0.592 |
+| green 546 nm | 549 | 2.27 | 0.741 | 0.702 | 0.702 |
+| blue 436 nm | 688 | 2.84 | 1.316 | 1.218 | 1.218 |
+| violet 405 nm | 741 | 3.06 | 1.535 | 1.407 | 1.407 |
 
 The leaflet example (Table 1) reads 0.59, 0.70, 1.23, 1.40 V, close to the lab column.
 
@@ -20,10 +20,10 @@ The leaflet example (Table 1) reads 0.59, 0.70, 1.23, 1.40 V, close to the lab c
 
 | Case | h (×10⁻³⁴ J·s) | vs true | slope (V/THz) | intercept (V) |
 |---|---|---|---|---|
-| Explore, clean | 6.63 | -0.0 % | 0.00414 | -1.520 |
-| Lab, clean | 5.97 | -10.0 % | 0.00372 | -1.342 |
-| Explore, dirty photocell | 6.33 | -4.4 % | 0.00395 | -1.453 |
-| Explore, stray light (0.02) | 0.00 | -100.0 % | 0.00000 | 1.877 |
+| Explore, clean | 6.63 | -0.0 % | 0.00414 | -1.529 |
+| Lab, clean | 5.90 | -11.0 % | 0.00368 | -1.318 |
+| Explore, dirty photocell | 6.38 | -3.6 % | 0.00399 | -1.463 |
+| Explore, stray light (0.000084) | 5.96 | -10.1 % | 0.00372 | -1.247 |
 
 True h = 6.63×10⁻³⁴ J·s (e = 1.6022×10⁻¹⁹ C). The leaflet obtains 6.1×10⁻³⁴.
 The intercept of e·U0 vs ν is not the cathode work function (anode work function enters, leaflet eq. VII).
@@ -32,13 +32,14 @@ The intercept of e·U0 vs ν is not the cathode work function (anode work functi
 
 | Line | Clean (V) | Dirty (V) | Stray light (V) |
 |---|---|---|---|
-| yellow 578 nm | 0.625 | 0.594 | 1.877 |
-| green 546 nm | 0.750 | 0.717 | 1.877 |
-| blue 436 nm | 1.325 | 1.276 | 1.877 |
-| violet 405 nm | 1.544 | 1.467 | 1.877 |
+| yellow 578 nm | 0.616 | 0.603 | 0.730 |
+| green 546 nm | 0.741 | 0.724 | 0.740 |
+| blue 436 nm | 1.316 | 1.280 | 1.305 |
+| violet 405 nm | 1.535 | 1.488 | 1.520 |
 
-- **Dirty photocell** (leakage 10¹² Ω): every plateau sags, the high ones more, so the slope and h fall slightly.
-- **Stray light** (preset): the highest-U0 component (the UV line) charges the capacitor too and drags every reading towards one value, the low-frequency lines most. The slope collapses, so h is far too low. Real stray light is weaker but pushes the same way.
+- **Dirty photocell** (leakage 10¹² Ω): every plateau sags, the high ones more, so the slope and h fall (see the table).
+- **Stray light** (preset): photocurrent from the other, higher-U0 lines keeps the capacitor charged, so the low-frequency plateaus are lifted most and the slope falls. Because the explore source is bright, a stray fraction of only ~10⁻⁴ is enough; with more, yellow and green merge into one value.
+- In Explore, either error switch also puts in the electrometer input resistance (10¹³ Ω) instead of the ideal 10²¹ Ω. Without it any stray current would charge every line to the UV U0 and h would be ~0.
 - Both effects give a **lower** h, so the answer to the `error-sources` prediction is "Lower".
 
 ## Photon energies and the zinc threshold
@@ -68,8 +69,8 @@ Level 1 · lab mode · concept: Limit voltage
 Level 2 · explore mode · concept: Intensity vs energy
 
 - Prediction answer: **The same**
-- Success: Two settled measurements of the same line, one at dimming ≥ 0.9 and one at ≤ 0.3.
-- Teacher note: Answer: the same (to within noise). Misconception: more light means faster electrons. Point at the live chart: the slope differs, the plateau does not. Wait times grow at low dimming, so encourage speed ×20.
+- Success: Two settled measurements of the same line, one at beam intensity ≥ 0.9 and one at ≤ 0.3.
+- Teacher note: Answer: the same (to within noise). Misconception: more light means faster electrons. Point at the live chart: the slope differs, the plateau does not. Wait times grow at low beam intensity, so encourage speed ×20.
 
 ### `planck` — Measure Planck's constant
 
@@ -77,7 +78,7 @@ Level 2 · lab mode · concept: h from the slope
 
 - Prediction answer: free number (h in 10⁻³⁴ J·s, recalled at the end, no check)
 - Success: Four distinct settled lines and a fit with h within 15 % of 6.63×10⁻³⁴ J·s.
-- Teacher note: Success: four settled lines and h within 15 % of the true value. Expected fit values per mode are in docs/teacher-key.md. Ask the class why the result is slightly low and why the intercept does not give W of potassium (anode work function, eq. VII).
+- Teacher note: Success: four settled lines and h within 15 % of the true value. Expected fit values per mode are in docs/teacher-key.md. Ask the class why the result is often 5–10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).
 
 ### `threshold` — No light, no electrons
 
@@ -93,5 +94,5 @@ Level 3 · explore mode · concept: Systematic errors
 
 - Prediction answer: **Lower**
 - Success: Dirty or stray light on, four distinct settled lines measured with the error active, and a fit available.
-- Teacher note: Answer: lower, in both cases (verified against the model; numbers in docs/teacher-key.md). The stray preset is strong, so the points collapse towards one value. Real stray light is weaker but acts in the same direction. Link to the leaflet notes on cleaning.
+- Teacher note: Answer: lower, in both cases (verified against the model; numbers in docs/teacher-key.md). With the stray preset the fit gives an h about 10 % low and yellow and green nearly merge; with more stray light they would collapse onto one value. Link to the leaflet notes on cleaning.
 
