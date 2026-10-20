@@ -1,0 +1,79 @@
+/* Panel view. Uses global tokens only. */
+.panel { display: grid; gap: var(--space-3); }
+.panel .card {
+  background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow-1); padding: var(--space-4);
+  display: grid; gap: var(--space-2); align-content: start; transition: opacity var(--dur-base) var(--ease-out);
+}
+.panel .card.is-dimmed { opacity: 0.45; }
+.panel h3 { margin: 0; font: var(--text-headline); }
+.panel .ctl-help { margin: 0; font: var(--text-footnote); color: var(--label-2); }
+.panel[data-mode='lab'] .only-explore { display: none; }
+.panel [hidden] { display: none; }
+
+/* Dial */
+.dial { position: relative; }
+.dial-svg { display: block; width: 100%; height: auto; max-width: 420px; margin-inline: auto; background: var(--surface-2); border-radius: var(--radius-m); }
+.dial-arc { fill: none; stroke: var(--label-2); stroke-width: 1.5; }
+.tick-major { stroke: var(--label); stroke-width: 2; }
+.tick-minor { stroke: var(--label-2); stroke-width: 1; }
+.dial-num { font: var(--text-footnote); fill: var(--label); font-variant-numeric: tabular-nums; }
+.dial-unit { font: var(--text-callout); font-weight: 600; fill: var(--label-2); }
+.dial-range { font: var(--text-footnote); fill: var(--label-2); }
+.dial-needle { transform-origin: 150px 168px; transition: transform 120ms var(--ease-out); }
+.dial-needle-line { stroke: var(--danger); stroke-width: 2; stroke-linecap: round; }
+.dial-hub { fill: var(--label); }
+.meter-off .dial-svg { opacity: 0.5; }
+.dial-badge {
+  position: absolute; left: 50%; top: var(--space-2); transform: translateX(-50%); margin: 0; padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full); font: var(--text-footnote); font-weight: 600; white-space: nowrap;
+}
+.dial-badge[data-kind='over'] { background: var(--danger); color: var(--on-accent); }
+.dial-badge[data-kind='off'] { background: var(--fill); color: var(--label-2); }
+.digital { margin: 0; font: var(--text-headline); font-variant-numeric: tabular-nums; text-align: center; font-family: var(--font-mono); }
+.digital:empty { display: none; }
+
+/* Segmented control */
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); background: var(--fill); border-radius: var(--radius-m); padding: var(--space-1); }
+.seg-btn {
+  flex: 1 1 44px; min-height: var(--touch); min-width: var(--touch); border: none; background: none; border-radius: var(--radius-s);
+  cursor: pointer; font: var(--text-callout); font-variant-numeric: tabular-nums; touch-action: manipulation;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.seg-btn[aria-checked='true'] { background: var(--surface); box-shadow: var(--shadow-1); font-weight: 600; }
+.seg-range { display: grid; grid-template-columns: repeat(4, 1fr); }
+@media (min-width: 520px) { .seg-range { grid-template-columns: repeat(7, 1fr); } }
+.panel[data-mode='lab'] .seg-btn.only-explore { display: none; }
+
+/* Key switch */
+.key-btn {
+  display: block; width: 100%; min-height: 96px; padding: 0; border: none; background: var(--fill); border-radius: var(--radius-l);
+  cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.key-cap {
+  display: grid; place-items: center; min-height: 80px; margin: var(--space-2); border-radius: var(--radius-m);
+  background: var(--accent-fill); color: var(--on-accent); box-shadow: 0 6px 0 rgba(0, 0, 0, 0.28); transform: translateY(-3px);
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.key-btn.is-pressed .key-cap { transform: translateY(3px); box-shadow: 0 0 0 rgba(0, 0, 0, 0.28); }
+.key-text { font: var(--text-headline); padding: 0 var(--space-3); }
+
+/* Amplifier */
+.amp-row { display: flex; align-items: center; gap: var(--space-2); font: var(--text-callout); }
+.amp-led { width: 10px; height: 10px; border-radius: var(--radius-full); background: var(--success); box-shadow: 0 0 0 3px var(--fill); }
+
+/* Stopwatch */
+.sw-time { margin: 0; font: 600 28px/32px var(--font-mono); font-variant-numeric: tabular-nums; }
+.sw-settled { margin: 0; min-height: 20px; font: var(--text-footnote); color: var(--label-2); opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
+.sw-settled.is-on { opacity: 1; }
+.sw-settled[data-mode='explore'].is-on { color: var(--success); font-weight: 600; }
+.sw-settled[data-mode='explore'].is-on::before { content: '\2713\00a0'; }
+
+@media (min-width: 820px) and (max-width: 1100px) {
+  .panel { grid-template-columns: 1fr 1fr; }
+  .panel .card-meter { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dial-needle, .key-cap, .seg-btn, .panel .card, .sw-settled { transition: none; }
+}
+
+.sw-time.is-text { font: var(--text-headline); font-family: var(--font); color: var(--label-2); }
