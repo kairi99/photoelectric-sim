@@ -4,9 +4,11 @@ import { button, el, store } from './dom.ts'
 import { fmt, pt } from './strings.ts'
 
 export const TOUR_KEY = 'photoelectric-tour-done'
-export type TourStepId = 'bench' | 'arm' | 'lamp' | 'meter' | 'key' | 'table' | 'charts' | 'learn'
+export type TourStepId = 'bench' | 'bench3d' | 'arm' | 'lamp' | 'meter' | 'key' | 'table' | 'charts' | 'learn'
 export const TOUR_STEPS: ReadonlyArray<{ id: TourStepId; selector: string }> = [
   { id: 'bench', selector: '[data-region="bench"] [data-bench-stage]:not([hidden])' },
+  // only exists while the 3D stage is shown: the selector matches nothing in 2D and the step is skipped
+  { id: 'bench3d', selector: '[data-region="bench"] .bench3d:not([hidden]) [data-bench-stage]' },
   { id: 'arm', selector: '[data-ctl="arm"]' },
   { id: 'lamp', selector: '[data-ctl="lamp"]' },
   { id: 'meter', selector: '[data-ctl="range"]' },
