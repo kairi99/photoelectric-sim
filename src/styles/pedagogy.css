@@ -143,3 +143,8 @@
 .tour-actions .tour-skip { margin-right: auto; background: none; color: var(--label-2); }
 .tour-actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .tour-spot { transition: none; } }
+
+/* explain-step verdict: calm, never alarming */
+.ped-verdict { font-weight: 600; }
+.ped-verdict.is-right { color: var(--success); }
+.ped-verdict.is-wrong { color: var(--label-2); }

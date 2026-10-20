@@ -140,17 +140,12 @@ export const mountTable: MountView = (root, ctx): View => {
       w.setAttribute('aria-label', w.title)
       th.append(w)
     }
-    // Not discharged since the line was aligned: the plateau may be a stale reading. The field is added by the
-    // apparatus; guard so this compiles either way. The text comes from `notDischargedRow` when it exists.
-    if ('dischargedSinceAlign' in m && m.dischargedSinceAlign === false) {
+    if (m.dischargedSinceAlign === false && m.lineId !== null) {
       tr.classList.add('tbl-flag')
       const w = el('span', 'tbl-warn', '!')
-      const txt = (s as unknown as Record<string, unknown>).notDischargedRow
-      if (typeof txt === 'string') {
-        w.title = txt
-        w.setAttribute('role', 'img')
-        w.setAttribute('aria-label', txt)
-      } else w.setAttribute('aria-hidden', 'true')
+      w.title = s.warnNotDischarged
+      w.setAttribute('role', 'img')
+      w.setAttribute('aria-label', s.warnNotDischarged)
       th.append(w)
     }
     const cells = [
