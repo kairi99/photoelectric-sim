@@ -4,7 +4,7 @@ import type { MeterRange, Speed } from '../apparatus/index.ts'
 import type { MountView, View } from './view.ts'
 import { strings } from './strings/panel.ts'
 import {
-  attrSetter, classSetter, fill, fmtNum, formatStopwatch, htmlEl, needleAngleDeg, scaleTicks, svgEl, textSetter,
+  announceDue, attrSetter, classSetter, fill, fmtNum, formatStopwatch, htmlEl, needleAngleDeg, quantiseReading_V, readingDecimals, scaleTicks, svgEl, textSetter,
 } from './benchkit.ts'
 
 const RANGES: MeterRange[] = ['OFF', 0.1, 0.3, 1, 3, 10, 30]
@@ -34,7 +34,7 @@ export const mountPanel: MountView = (root, ctx): View => {
   relabelers.push(() => { meterHead.textContent = S().meterTitle })
   const dial = htmlEl('div', { class: 'dial' }, meter)
   const svg = svgEl('svg', { viewBox: '0 16 300 172', class: 'dial-svg', role: 'img' }, dial)
-  relabelers.push(() => svg.setAttribute('aria-label', S().meterLabel))
+  const setSvgLabel = attrSetter(svg, 'aria-label')
   const ptAt = (f: number, r: number) => {
     const t = (needleAngleDeg(f) * Math.PI) / 180
     return { x: DIAL.cx + r * Math.sin(t), y: DIAL.cy - r * Math.cos(t) }
@@ -75,6 +75,16 @@ export const mountPanel: MountView = (root, ctx): View => {
   const badge = htmlEl('p', { class: 'dial-badge', role: 'status' }, dial)
   const setBadgeText = textSetter(badge)
   const setBadgeKind = (() => { let l = ''; return (k: string) => { if (k !== l) { l = k; badge.dataset.kind = k; badge.hidden = k === '' } } })()
+  // Screen-reader text for the needle: quantised to the scale's reading resolution, announced at most once a second.
+  const live = htmlEl('p', { class: 'visually-hidden', 'aria-live': 'polite', 'aria-atomic': 'true' }, dial)
+  let liveText = '', liveAt = -Infinity, labelText = ''
+  const needleText = (r: ReturnType<typeof a.readout>): string => {
+    const s = S()
+    if (r.meterRange === 'OFF' || r.needleValue_V === null) return s.needleOff
+    const rng = String(r.meterRange).replace('.', ctx.lang() === 'es' ? ',' : '.')
+    if (r.overRange) return fill(s.needleOver, { r: rng })
+    return fill(s.needleReading, { v: fmtNum(quantiseReading_V(r.needleValue_V, r.meterRange), readingDecimals(r.meterRange), ctx.lang()), r: rng })
+  }
   const digital = htmlEl('p', { class: 'digital only-explore' }, meter)
   const digitalLbl = htmlEl('span', { class: 'digital-lbl' }, digital)
   const digitalVal = htmlEl('span', { class: 'digital-val' }, digital)
@@ -90,13 +100,14 @@ export const mountPanel: MountView = (root, ctx): View => {
       b.textContent = rg === 'OFF' ? S().rangeOff : num
       b.setAttribute('aria-label', rg === 'OFF' ? S().rangeOff : fill(S().rangeOption, { v: num }))
     })
-    listen(b, 'click', () => a.setRange(rg))
+    listen(b, 'click', () => { a.setRange(rg); update() })
     listen(b, 'keydown', (e: KeyboardEvent) => {
       const i = RANGES.indexOf(rg)
       const j = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? i - 1 : -1
       if (j < 0 || j >= RANGES.length) return
       e.preventDefault()
       a.setRange(RANGES[j]!)
+      update()
       rangeBtns[j]!.focus()
     })
     return b
@@ -160,7 +171,7 @@ export const mountPanel: MountView = (root, ctx): View => {
   const speedBtns = SPEEDS.map((sp) => {
     const b = htmlEl('button', { type: 'button', role: 'radio', 'aria-checked': 'false', tabindex: -1, class: `seg-btn${sp === 20 ? ' only-explore' : ''}` }, speedGroup)
     relabelers.push(() => { b.textContent = fill(S().speedOption, { n: sp }) })
-    listen(b, 'click', () => a.setSpeed(sp))
+    listen(b, 'click', () => { a.setSpeed(sp); update() })
     listen(b, 'keydown', (e: KeyboardEvent) => {
       const avail = SPEEDS.filter((x) => !(a.mode === 'lab' && x === 20))
       const i = avail.indexOf(sp)
@@ -168,6 +179,7 @@ export const mountPanel: MountView = (root, ctx): View => {
       if (j < 0 || j >= avail.length) return
       e.preventDefault()
       a.setSpeed(avail[j]!)
+      update()
       speedBtns[SPEEDS.indexOf(avail[j]!)]!.el.focus()
     })
     return { el: b, chk: attrSetter(b, 'aria-checked'), tab: attrSetter(b, 'tabindex') }
@@ -192,6 +204,13 @@ export const mountPanel: MountView = (root, ctx): View => {
     if (off) { setBadgeText(s.meterOff); setBadgeShown('off') }
     else if (r.overRange) { setBadgeText(s.overRange); setBadgeShown('over') }
     else { setBadgeShown('') }
+    const nt = needleText(r)
+    const lbl = `${s.meterLabel}. ${nt}`
+    if (lbl !== labelText) { labelText = lbl; setSvgLabel(lbl) }
+    if (r.mode === 'lab') {
+      const now = performance.now()
+      if (announceDue(liveText, nt, liveAt, now)) { liveText = nt; liveAt = now; live.textContent = nt }
+    } else if (liveText !== '') { liveText = ''; live.textContent = '' }
     if (r.mode === 'explore' && r.needleValue_V !== null) { setDigitalLbl(`${s.digital}: `); setDigitalVal(`${fmtNum(r.needleValue_V, 3, ctx.lang())} V`) }
     else { setDigitalLbl(''); setDigitalVal('') }
     RANGES.forEach((rg, i) => {
@@ -219,7 +238,7 @@ export const mountPanel: MountView = (root, ctx): View => {
     })
   }
 
-  const relabel = (): void => { for (const f of relabelers) f(); builtRange = null; update() }
+  const relabel = (): void => { for (const f of relabelers) f(); builtRange = null; labelText = ''; liveText = ''; liveAt = -Infinity; update() }
   relabel()
 
   return {

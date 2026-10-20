@@ -92,6 +92,15 @@
   #app.has-learn { padding-right: min(26rem, 100vw); }
   #app.has-learn .dock { right: calc(min(26rem, 100vw) + var(--space-4)); }
 }
+/* Desktop: anchor the dock bottom-left, inside the bench column, so it never covers panel readouts. */
+@media (min-width: 820px) {
+  .dock { right: auto; width: min(30rem, 50vw); justify-items: stretch; left: max(var(--space-4), calc((100vw - 96rem) / 2 + var(--space-4))); }
+  #app.has-learn .dock { right: auto; }
+  .dock > * { width: 100%; }
+}
+@media (max-width: 819px) {
+  .dock { bottom: max(var(--space-3), env(safe-area-inset-bottom)); }
+}
 
 /* ---- procedure checklist ---- */
 .proc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }

@@ -65,3 +65,30 @@ describe('bench drawing helpers', () => {
     expect(fill('{a} and {b}', { a: 1, b: 'x' })).toBe('1 and x')
   })
 })
+
+import { announceDue, quantiseReading_V, readingDecimals, readingResolution_V } from '../src/views/benchkit'
+describe('accessible meter reading', () => {
+  it('resolution is half a fine tick', () => {
+    expect(readingResolution_V(3)).toBeCloseTo(0.05, 12)
+    expect(readingResolution_V(1)).toBeCloseTo(0.01, 12)
+    expect(readingResolution_V(10)).toBeCloseTo(0.1, 12)
+    expect(readingResolution_V(0.3)).toBeCloseTo(0.005, 12)
+  })
+  it('quantises and never goes negative', () => {
+    expect(quantiseReading_V(1.4132, 3)).toBeCloseTo(1.4, 12)
+    expect(quantiseReading_V(1.427, 3)).toBeCloseTo(1.45, 12)
+    expect(quantiseReading_V(0.4137, 1)).toBeCloseTo(0.41, 12)
+    expect(quantiseReading_V(-0.02, 3)).toBe(0)
+  })
+  it('decimals', () => {
+    expect(readingDecimals(3)).toBe(2)
+    expect(readingDecimals(1)).toBe(2)
+    expect(readingDecimals(0.3)).toBe(3)
+  })
+  it('announces only on change and after the gap', () => {
+    expect(announceDue('a', 'a', 0, 5000)).toBe(false)
+    expect(announceDue('a', 'b', 0, 500)).toBe(false)
+    expect(announceDue('a', 'b', 0, 1000)).toBe(true)
+    expect(announceDue('', 'b', -Infinity, 0)).toBe(true)
+  })
+})

@@ -7,6 +7,9 @@ interface PanelStrings {
   meterOff: string
   overRange: string
   needleAt: string // "Needle at {frac} % of full scale"
+  needleReading: string // "Needle at about {v} V on the {r} V range"
+  needleOver: string
+  needleOff: string
   rangeGroup: string
   rangeOff: string
   rangeOption: string // "{v} V"
@@ -36,6 +39,9 @@ const en: PanelStrings = {
   meterOff: 'Meter off',
   overRange: 'Over range',
   needleAt: 'Needle at {frac} % of full scale',
+  needleReading: 'Needle at about {v} V on the {r} V range',
+  needleOver: 'Needle past the end of the {r} V scale: over range',
+  needleOff: 'Meter is off, no reading',
   rangeGroup: 'Voltage range',
   rangeOff: 'Off',
   rangeOption: '{v} V',
@@ -65,6 +71,9 @@ const es: PanelStrings = {
   meterOff: 'Multímetro apagado',
   overRange: 'Fuera de escala',
   needleAt: 'Aguja al {frac} % del fondo de escala',
+  needleReading: 'Aguja en torno a {v} V en la escala de {r} V',
+  needleOver: 'Aguja más allá del final de la escala de {r} V: fuera de escala',
+  needleOff: 'Multímetro apagado, sin lectura',
   rangeGroup: 'Rango de tensión',
   rangeOff: 'Apagado',
   rangeOption: '{v} V',

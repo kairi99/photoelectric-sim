@@ -132,6 +132,28 @@ export function scaleTicks(range_V: number): Tick[] {
   }
   return ticks
 }
+/** Fine ticks per division on every scale (see scaleTicks). */
+const FINE_PER_DIV = 5
+/** Reading resolution of the scale, V: half a fine tick (0.05 V on 3 V, 0.01 V on 1 V). */
+export function readingResolution_V(range_V: number): number {
+  const n = [0.3, 3, 30].includes(range_V) ? 6 : 10
+  return range_V / (n * FINE_PER_DIV) / 2
+}
+/** Needle value rounded to the reading resolution (what a sighted student can honestly read), never below zero. */
+export function quantiseReading_V(value_V: number, range_V: number): number {
+  const res = readingResolution_V(range_V)
+  const q = Math.round(Math.max(0, value_V) / res) * res
+  return +q.toFixed(6)
+}
+/** Decimals needed to print quantised readings on a range (2 for 0.05 and 0.01 V steps, 3 for 0.1 V ranges and below). */
+export function readingDecimals(range_V: number): number {
+  const res = readingResolution_V(range_V)
+  return Math.max(2, Math.ceil(-Math.log10(res) - 1e-9))
+}
+/** True when an assistive-tech announcement is due: the text changed and the minimum gap has passed. */
+export function announceDue(lastText: string, nextText: string, lastAt_ms: number, now_ms: number, minGap_ms = 1000): boolean {
+  return nextText !== lastText && now_ms - lastAt_ms >= minGap_ms
+}
 export function formatStopwatch(t_s: number): string {
   const s = Math.max(0, t_s)
   const m = Math.floor(s / 60)
