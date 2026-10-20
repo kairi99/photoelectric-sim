@@ -1,0 +1,58 @@
+/* Design tokens. Components use only these. */
+:root {
+  color-scheme: light dark;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-title: 600 22px/28px var(--font);
+  --text-headline: 600 17px/22px var(--font);
+  --text-body: 400 17px/24px var(--font);
+  --text-callout: 400 15px/20px var(--font);
+  --text-footnote: 400 13px/18px var(--font);
+  --text-caption: 500 11px/13px var(--font);
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+  --radius-s: 8px; --radius-m: 14px; --radius-l: 22px; --radius-full: 999px;
+  --stroke-hair: 1px;
+  --touch: 44px;
+  --dur-fast: 150ms; --dur-base: 250ms; --dur-slow: 350ms;
+  --z-overlay: 1; --z-sheet: 2;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.12);
+
+  --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f2f2f7;
+  --fill: rgba(120, 120, 128, 0.12); --separator: rgba(60, 60, 67, 0.18);
+  --label: #1d1d1f; --label-2: rgba(60, 60, 67, 0.72); --label-3: rgba(60, 60, 67, 0.32);
+  --accent: #0071e3; --danger: #d70015; --success: #1f7a35;
+  --accent-fill: #0071e3; --on-accent: #ffffff;
+
+  /* Physics colours: the four Hg lines. Each is >= 4.5:1 on --surface and --surface-2 (text and graphics). */
+  --phys-yellow: #8a6100; /* 578 nm */
+  --phys-green: #1a7f37;  /* 546 nm */
+  --phys-blue: #0a64c8;   /* 436 nm */
+  --phys-violet: #6d3fd1; /* 405 nm */
+}
+@media (min-resolution: 2dppx) { :root { --stroke-hair: 0.5px; } }
+/* Dark: follows the system unless the manual toggle forces a theme. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e;
+    --fill: rgba(120, 120, 128, 0.24); --separator: rgba(84, 84, 88, 0.6);
+    --label: #f5f5f7; --label-2: rgba(235, 235, 245, 0.62); --label-3: rgba(235, 235, 245, 0.32);
+    --accent: #0a84ff; --danger: #ff453a; --success: #30d158;
+    --phys-yellow: #f2c230; --phys-green: #4cd964; --phys-blue: #5aa9ff; --phys-violet: #b18cff;
+    --shadow-1: none; --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e;
+  --fill: rgba(120, 120, 128, 0.24); --separator: rgba(84, 84, 88, 0.6);
+  --label: #f5f5f7; --label-2: rgba(235, 235, 245, 0.62); --label-3: rgba(235, 235, 245, 0.32);
+  --accent: #0a84ff; --danger: #ff453a; --success: #30d158;
+  --phys-yellow: #f2c230; --phys-green: #4cd964; --phys-blue: #5aa9ff; --phys-violet: #b18cff;
+  --shadow-1: none; --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+}
+:root[data-theme='light'] { color-scheme: light; }
