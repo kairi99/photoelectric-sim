@@ -18,5 +18,10 @@
   "dependencies": {
     "uplot": "^1.6.32"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kairi99/photoelectric-sim.git"
+  },
+  "homepage": "https://kairi99.github.io/photoelectric-sim/"
 }
