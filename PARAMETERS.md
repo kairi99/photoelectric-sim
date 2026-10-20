@@ -19,6 +19,7 @@ Every empirical or fitted parameter of the model is listed here (honest-model in
 | `LAB.stray_fraction` | 0.002 | fraction | Each non-selected line reaches the cathode at this fraction of its own current (dust/fingerprints on optics). Fitted jointly; small enough that yellow/green plateaus stay near Table 1. Ideal = 0. | 2026-10-20 |
 | `LAB.R_cell_Ohm` | 4e12 | Ohm | Surface leakage of the bench cell (some dirt, which the leaflet names as an error source), fitted jointly; in parallel with `R_INPUT_Ohm` gives R_total ~2.9e12 Ohm. Leakage pulls each plateau below U0, more for high U0, which lowers the fitted slope. | 2026-10-20 |
 | `IDEAL.R_cell_Ohm = R_input_Ohm` | 1e21 | Ohm | "Effectively infinite" but finite so the ODE and bisection stay well-defined; small enough that the equilibrium sits within 1 mV of U0 even for the weak UV line. | 2026-10-20 |
+| `IDEAL.I_ref_A` | 1e-9 | A | Explore-mode idealised bright source (10× the lab `I_REF_A`), chosen so the (1−U/U0)² approach reaches U0 within ~10 mV after 60 s; does not change any U0 | 2026-10-20 |
 | `LAB.wait_s` | 60 | s | Upper end of the leaflet's "30 s to 1 min" waiting time. | 2026-10-20 |
 | LAB dimming note | - | - | In LAB, dimming changes the plateau slightly (the leakage balance depends on I_sat): a real effect and a teaching point. In IDEAL the plateau is independent of dimming. | 2026-10-20 |
 
@@ -34,5 +35,3 @@ Grid search over W_A, I_ref, violet relative power (kept at 0.6), stray fraction
 | violet 405 | 1.360 | 1.398 | 1.404 | 1.404 | 1.404 | 1.40 | +0.004 | 1.544 |
 
 Fitted h from the steady states = 5.97e-34 J s (intercept -1.34 V), against 5.91e-34 for the Table 1 fit. The slope deficit comes from leakage: the equilibrium deficit grows with U0, lowering violet (-0.14 V) more than yellow (-0.04 V). Stray light lifts the low-frequency plateaus slightly.
-
-| `IDEAL.I_ref_A` | 1e-9 | A | Explore-mode idealised bright source (10× the lab `I_REF_A`), chosen so the (1−U/U0)² approach reaches U0 within ~10 mV after 60 s; does not change any U0 | 2026-10-20 |
