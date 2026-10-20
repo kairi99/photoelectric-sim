@@ -6,7 +6,7 @@ import { fmt, pt } from './strings.ts'
 export const TOUR_KEY = 'photoelectric-tour-done'
 export type TourStepId = 'bench' | 'arm' | 'lamp' | 'meter' | 'key' | 'table' | 'charts' | 'learn'
 export const TOUR_STEPS: ReadonlyArray<{ id: TourStepId; selector: string }> = [
-  { id: 'bench', selector: '[data-region="bench"] svg' },
+  { id: 'bench', selector: '[data-region="bench"] [data-bench-stage]:not([hidden])' },
   { id: 'arm', selector: '[data-ctl="arm"]' },
   { id: 'lamp', selector: '[data-ctl="lamp"]' },
   { id: 'meter', selector: '[data-ctl="range"]' },

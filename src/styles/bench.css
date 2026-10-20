@@ -115,3 +115,40 @@
 
 /* Guided tasks hide the photon-energy overlay until the act step is done. */
 :root[data-hide-answers] .bench-photon { display: none; }
+
+/* Bench region header: 3D / 2D toggle and the fallback note. */
+.bench-head { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.bench-head .seg-group { margin-left: auto; }
+.bench-head .tool { min-height: var(--touch); min-width: var(--touch); }
+.bench-note { margin: 0; font: var(--text-footnote); color: var(--label-2); flex: 1 1 12rem; }
+.bench [hidden] { display: none !important; }
+.bench3d { display: grid; gap: var(--space-3); margin-bottom: var(--space-3); }
+.bench3d-stage {
+  position: relative; background: var(--stage-plate); border-radius: var(--radius-l); overflow: hidden;
+  box-shadow: var(--shadow-1); aspect-ratio: 16 / 10; min-height: 260px; max-height: 70vh; width: 100%;
+}
+.bench3d-stage canvas { display: block; width: 100%; height: 100%; outline: none; }
+.bench3d-status { position: absolute; inset: 0; display: grid; place-items: center; font: var(--text-callout); color: var(--stage-ink-2); }
+.bench3d-presets {
+  position: absolute; left: var(--space-2); bottom: var(--space-2); right: var(--space-2); display: flex; gap: var(--space-1); flex-wrap: wrap;
+}
+.bench3d-presets button {
+  min-height: var(--touch); min-width: var(--touch); padding-inline: var(--space-3); border: none; border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--stage-plate) 78%, transparent); color: var(--stage-ink); font: var(--text-footnote); cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.bench3d-presets button[aria-pressed='true'] { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
+.bench3d-presets button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bench3d-card {
+  position: absolute; left: var(--space-2); right: var(--space-2); top: var(--space-2); display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-3); border-radius: var(--radius-m); background: var(--surface); color: var(--label); box-shadow: var(--shadow-1);
+  animation: bench-pop var(--dur-base) var(--ease-out);
+}
+.bench3d-card p { margin: 0; flex: 1; font: var(--text-callout); }
+.bench3d-card button {
+  min-height: var(--touch); min-width: var(--touch); border: none; border-radius: var(--radius-full); background: var(--fill);
+  color: var(--label); font: var(--text-footnote); cursor: pointer; padding-inline: var(--space-3);
+}
+@media (prefers-reduced-motion: reduce) { .bench3d-card { animation: none; } }
+.bench3d[hidden] { display: none; }
+@media (max-width: 600px) { .bench3d-stage { aspect-ratio: 4 / 3; } }

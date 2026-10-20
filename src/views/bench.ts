@@ -4,7 +4,7 @@ import { HG_LINES, nuFromLambda, photonEnergy_eV } from '../physics/index.ts'
 import type { CathodeId, HgLineId } from '../physics/index.ts'
 import { LINE_SIGMA, STRAY_PRESET_FRACTION } from '../apparatus/index.ts'
 import type { Mode } from '../apparatus/index.ts'
-import type { MountView, View } from './view.ts'
+import type { View, ViewContext } from './view.ts'
 import { strings } from './strings/bench.ts'
 import {
   armAngleDeg, armPoint, armPositionFromAngle, attrSetter, classSetter, clamp, fill, flagSetter, fmtNum, htmlEl,
@@ -28,7 +28,10 @@ type PartKey = keyof (typeof strings.en)['parts']
 
 let uid = 0
 
-export const mountBench: MountView = (root, ctx): View => {
+/** The 2D bench. `setStageVisible(false)` hides the SVG drawing (3D mode) but keeps the control strip and window inset. */
+export type BenchView = View & { setStageVisible(visible: boolean): void }
+
+export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
   const a = ctx.apparatus
   const S = () => strings[ctx.lang()]
   const id = `bench${uid++}`
@@ -40,7 +43,7 @@ export const mountBench: MountView = (root, ctx): View => {
   }
 
   const wrap = htmlEl('div', { class: 'bench' }, root)
-  const stage = htmlEl('div', { class: 'bench-stage' }, wrap)
+  const stage = htmlEl('div', { class: 'bench-stage', 'data-bench-stage': '' }, wrap)
 
   // ---------------------------------------------------------------- main SVG
   const svg = svgEl('svg', { viewBox: '0 8 360 376', class: 'bench-svg', role: 'img' }, stage)
@@ -468,6 +471,11 @@ export const mountBench: MountView = (root, ctx): View => {
     relabel,
     focus(list) {
       for (const [name, el] of ctls) el.classList.toggle('is-dimmed', list !== null && !list.includes(name))
+    },
+    setStageVisible(visible) {
+      stage.hidden = !visible
+      hint.hidden = !visible
+      if (!visible) showInfo(null)
     },
     destroy() {
       for (const c of cleanups) c()

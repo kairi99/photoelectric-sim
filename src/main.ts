@@ -3,7 +3,7 @@ import './styles/pedagogy.css'
 import { Apparatus, type Mode } from './apparatus/index.ts'
 import { loadLang, loadMode, saveLang, saveMode, t, type Lang } from './i18n.ts'
 import type { View, ViewContext } from './views/view.ts'
-import { mountBench } from './views/bench.ts'
+import { mountBenchSwitch } from './views/benchmode.ts'
 import { mountPanel } from './views/panel.ts'
 import { mountCharts } from './views/charts.ts'
 import { mountTable } from './views/table.ts'
@@ -208,7 +208,7 @@ function boot(root: HTMLElement): void {
 
   // ---- views and the single animation loop ----
   const views: View[] = [
-    mountBench(benchRoot, ctx),
+    mountBenchSwitch(benchRoot, ctx),
     mountPanel(panelRoot, ctx),
     mountCharts(chartsRoot, ctx),
     mountTable(tableRoot, ctx),
