@@ -29,7 +29,9 @@ export function webgl2Available(): boolean {
 export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DOptions = {}): Bench3DView {
   const S = () => strings[ctx.lang()]
   const camParam = new URLSearchParams(location.search).get('cam') as PresetName | null
-  const initial: PresetName = opts.preset ?? (camParam && PRESET_ORDER.includes(camParam) ? camParam : 'overview')
+  // A portrait phone fits the wide table only as a thin strip, so start where the arm and window are reachable.
+  const portraitPhone = matchMedia('(max-width: 819px) and (orientation: portrait)').matches
+  const initial: PresetName = opts.preset ?? (camParam && PRESET_ORDER.includes(camParam) ? camParam : portraitPhone ? 'optics' : 'overview')
 
   const wrap = document.createElement('div')
   wrap.className = 'bench3d'
