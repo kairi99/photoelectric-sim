@@ -21,6 +21,8 @@ interface S {
   errMeterOff: string
   warnUnsettled: string
   warnMisaligned: string
+  /** Row marker: the capacitor was not discharged after the line was set (Measurement.dischargedSinceAlign === false). */
+  warnNotDischarged: string
   deleteRow: (n: number) => string
   exportCsv: string
   clearAll: string
@@ -51,6 +53,7 @@ export const strings: Strings<S> = {
     errMeterOff: 'The multimeter is off, so there is nothing to record.',
     warnUnsettled: 'The voltage may not have settled. You may not have waited long enough.',
     warnMisaligned: 'No spectral line was on the cell. This point cannot be used in the fit.',
+    warnNotDischarged: 'Not discharged since the line changed: leftover charge may be in this reading.',
     deleteRow: (n) => `Delete measurement ${n}`,
     exportCsv: 'Export CSV',
     clearAll: 'Clear all',
@@ -62,23 +65,24 @@ export const strings: Strings<S> = {
     title: 'Mediciones',
     caption: 'Tensiones límite registradas',
     empty: 'Registra tu primera medida cuando la aguja deje de moverse.',
-    colLine: 'Línea',
+    colLine: 'Raya',
     colLambda: 'λ (nm)',
     colNu: 'ν (THz)',
     colU0: 'U₀ (V)',
     colWait: 'Espera (s)',
     colActions: 'Borrar',
-    noLine: 'Sin línea',
+    noLine: 'Sin raya',
     lines: { yellow: 'Amarilla', green: 'Verde', blue: 'Azul', violet: 'Violeta', uv: 'UV' },
     readingLabel: 'Valor leído en la aguja (V)',
     readingHint: 'p. ej. 0,62',
     record: 'Registrar',
     recordNow: 'Registrar el valor actual',
     errInvalid: 'Introduce una tensión entre 0 y 30 V.',
-    errRequired: 'Primero escribe el valor que lees en el polímetro.',
-    errMeterOff: 'El polímetro está apagado, no hay nada que registrar.',
+    errRequired: 'Primero escribe el valor que lees en el multímetro.',
+    errMeterOff: 'El multímetro está apagado, no hay nada que registrar.',
     warnUnsettled: 'Puede que la tensión no se haya estabilizado: quizá no esperaste lo suficiente.',
-    warnMisaligned: 'Ninguna línea del espectro incidía en la célula. Este punto no sirve para el ajuste.',
+    warnMisaligned: 'Ninguna raya del espectro incidía en la célula. Este punto no sirve para el ajuste.',
+    warnNotDischarged: 'Sin descargar desde el cambio de raya: la lectura puede incluir carga residual.',
     deleteRow: (n) => `Borrar la medida ${n}`,
     exportCsv: 'Exportar CSV',
     clearAll: 'Borrar todo',

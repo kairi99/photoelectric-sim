@@ -2,8 +2,8 @@
 import type { Apparatus } from '../apparatus/index.ts'
 import { VISIBLE_LINES } from './task.ts'
 
-export type ChecklistId = 'lamp' | 'meter' | 'line' | 'discharge' | 'release' | 'wait' | 'record' | 'lines' | 'fit'
-export const CHECKLIST_IDS: readonly ChecklistId[] = ['lamp', 'meter', 'line', 'discharge', 'release', 'wait', 'record', 'lines', 'fit']
+export type ChecklistId = 'lamp' | 'meter' | 'cover' | 'line' | 'discharge' | 'release' | 'wait' | 'record' | 'lines' | 'fit'
+export const CHECKLIST_IDS: readonly ChecklistId[] = ['lamp', 'meter', 'cover', 'line', 'discharge', 'release', 'wait', 'record', 'lines', 'fit']
 
 export interface ChecklistItem {
   id: ChecklistId
@@ -12,6 +12,9 @@ export interface ChecklistItem {
   detail?: string
 }
 
+/** Window cover position (0..1) that counts as closed. */
+export const COVER_MIN = 0.9
+
 function distinctLines(a: Apparatus): number {
   const s = new Set<string>()
   for (const m of a.measurements) if (m.lineId && (VISIBLE_LINES as readonly string[]).includes(m.lineId)) s.add(m.lineId)
@@ -19,13 +22,18 @@ function distinctLines(a: Apparatus): number {
 }
 
 /**
- * Steps 4-7 describe the latest measurement cycle: it starts at the last 'discharged' log entry, so a new
- * discharge clears them for the next line while a finished cycle stays ticked.
+ * Steps 5-8 describe the latest measurement cycle: it starts at the last 'discharged' log entry that follows
+ * the last 'lineAligned', so a new line or a new discharge clears them for the next measurement while a finished
+ * cycle stays ticked.
  */
 export function checklistState(a: Apparatus): ChecklistItem[] {
   const log = a.procedureLog
   let d = -1
-  for (let i = log.length - 1; i >= 0; i--) if (log[i]!.action === 'discharged') { d = i; break }
+  for (let i = log.length - 1; i >= 0; i--) {
+    const act = log[i]!.action
+    if (act === 'lineAligned') break // a new line resets discharge -> release -> wait -> record
+    if (act === 'discharged') { d = i; break }
+  }
   const after = (from: number, action: string): number => {
     if (from < 0) return -1
     for (let i = from + 1; i < log.length; i++) if (log[i]!.action === action) return i
@@ -41,6 +49,7 @@ export function checklistState(a: Apparatus): ChecklistItem[] {
   return [
     { id: 'lamp', done: a.lampOn && r0.lampBrightness >= 0.99 },
     { id: 'meter', done: a.meterRange === 3 },
+    { id: 'cover', done: !a.roomLights || a.windowCover >= COVER_MIN },
     { id: 'line', done: line !== null && line !== 'uv' },
     { id: 'discharge', done: d >= 0 },
     { id: 'release', done: r >= 0 },

@@ -1,4 +1,5 @@
 import type { GuidedTask } from '../task.ts'
+import { isValid } from '../task.ts'
 
 export const BRIGHT_MIN = 0.9
 export const DIM_MAX = 0.3 // beamIntensity thresholds (explore filter)
@@ -11,7 +12,7 @@ export const task: GuidedTask = {
   initial: {},
   predict: { kind: 'choice', answer: 1 }, // higher, same, lower
   success: (a) => {
-    const settled = a.measurements.filter((m) => m.settled && m.lineId && m.lineId !== 'uv')
+    const settled = a.measurements.filter((m) => isValid(m) && m.lineId && m.lineId !== 'uv')
     return settled.some((hi) => hi.beamIntensity >= BRIGHT_MIN && settled.some((lo) => lo.lineId === hi.lineId && lo.beamIntensity <= DIM_MAX))
   },
   hints: [

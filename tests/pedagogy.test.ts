@@ -4,11 +4,12 @@ import type { Mode } from '../src/apparatus/index.ts'
 import { H_Js } from '../src/physics/index.ts'
 import type { HgLineId } from '../src/physics/index.ts'
 import { TASKS } from '../src/pedagogy/tasks/index.ts'
-import { applyInitial, expectedPlateau_V, VISIBLE_LINES } from '../src/pedagogy/task.ts'
+import { applyInitial, energyVars, expectedFitH_Js, expectedPlateau_V, photonEnergyText, VISIBLE_LINES } from '../src/pedagogy/task.ts'
 import type { GuidedTask } from '../src/pedagogy/task.ts'
 import { pedagogyStrings } from '../src/pedagogy/strings.ts'
 import { checklistState, currentStep } from '../src/pedagogy/checklist.ts'
 import { Coach, coachCandidates } from '../src/pedagogy/coach.ts'
+import { COVER_MIN } from '../src/pedagogy/checklist.ts'
 import { teacherKey } from '../src/pedagogy/teacherKey.ts'
 
 const { en, es } = pedagogyStrings
@@ -44,7 +45,7 @@ function measure(a: Apparatus, id: HgLineId): void {
 
 /** Scripted solution for each task. */
 const SOLUTIONS: Record<string, (a: Apparatus) => void> = {
-  'find-line': (a) => { a.setLamp(true); a.setArm(a.linePosition('yellow')) },
+  'find-line': (a) => { a.setLamp(true); a.setArm(a.linePosition('violet')); a.setArm(a.linePosition('yellow')) },
   'first-u0': (a) => { warmUp(a); measure(a, 'yellow') },
   intensity: (a) => {
     warmUp(a)
@@ -244,19 +245,19 @@ describe('procedure checklist', () => {
   const done = (a: Apparatus): string[] => checklistState(a).filter((i) => i.done).map((i) => i.id)
   it('starts empty in lab mode', () => {
     const a = new Apparatus({ mode: 'lab' })
-    expect(done(a)).toEqual([])
+    expect(done(a)).toEqual(['cover']) // room lights are off by default
     expect(currentStep(checklistState(a))).toBe(0)
   })
   it('ticks along a scripted procedure', () => {
     const a = new Apparatus({ mode: 'lab' })
     a.setLamp(true)
-    expect(done(a)).toEqual([])
+    expect(done(a)).toEqual(['cover'])
     run(a, 70)
-    expect(done(a)).toEqual(['lamp'])
+    expect(done(a)).toEqual(['lamp', 'cover'])
     a.setRange(3)
-    expect(done(a)).toEqual(['lamp', 'meter'])
+    expect(done(a)).toEqual(['lamp', 'meter', 'cover'])
     a.setArm(a.linePosition('yellow'))
-    expect(done(a)).toEqual(['lamp', 'meter', 'line'])
+    expect(done(a)).toEqual(['lamp', 'meter', 'cover', 'line'])
     a.pressKey(); run(a, 3)
     expect(done(a)).toContain('discharge')
     expect(done(a)).not.toContain('release')
@@ -269,10 +270,32 @@ describe('procedure checklist', () => {
     expect(done(a)).toContain('record')
     expect(done(a)).not.toContain('lines')
     // a new discharge starts a new cycle
-    a.setArm(a.linePosition('green'))
     a.pressKey(); run(a, 3)
     expect(done(a)).not.toContain('record')
     expect(done(a)).not.toContain('release')
+  })
+  it('a new line resets discharge, release, wait and record', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    warmUp(a)
+    measure(a, 'yellow')
+    expect(done(a)).toEqual(expect.arrayContaining(['discharge', 'release', 'wait', 'record']))
+    a.setArm(a.linePosition('green'))
+    for (const id of ['discharge', 'release', 'wait', 'record']) expect(done(a), id).not.toContain(id)
+    expect(done(a)).toContain('line')
+    expect(currentStep(checklistState(a))).toBe(checklistState(a).findIndex((i) => i.id === 'discharge'))
+  })
+  it('the cover step ticks with room lights off or the window cover closed', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    expect(done(a)).toContain('cover')
+    a.load({ roomLights: true })
+    expect(done(a)).not.toContain('cover')
+    a.setWindowCover(COVER_MIN - 0.05)
+    expect(done(a)).not.toContain('cover')
+    a.setWindowCover(COVER_MIN)
+    expect(done(a)).toContain('cover')
+    a.setWindowCover(0)
+    a.load({ roomLights: false })
+    expect(done(a)).toContain('cover')
   })
   it('ticks lines and fit after four lines', () => {
     const a = new Apparatus({ mode: 'lab' })
@@ -331,5 +354,160 @@ describe('teacher key', () => {
     for (const t of TASKS) expect(md).toContain(`\`${t.id}\``)
     expect(md).toMatch(/dirty/i)
     expect(md).toMatch(/stray/i)
+  })
+})
+
+describe('phase 5a pedagogy fixes', () => {
+  /** Measure violet, then switch to yellow WITHOUT discharging, wait, record. */
+  function leftover(a: Apparatus): void {
+    measure(a, 'violet')
+    a.setArm(a.linePosition('yellow'))
+    run(a, 60)
+    a.record(Math.round(a.readout().needleValue_V! * 50) / 50)
+  }
+  it('coach shows notDischarged every time, not once per session', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    warmUp(a)
+    leftover(a)
+    const m = a.measurements[1]!
+    expect(m.dischargedSinceAlign).toBe(false)
+    const ev = { type: 'record', typed: m.U0_V, measurement: m } as const
+    expect(coachCandidates(a, ev)).toContain('notDischarged')
+    const c = new Coach()
+    expect(c.pick(a, ev)).toBe('notDischarged')
+    expect(c.pick(a, ev)).toBe('notDischarged')
+    expect(en.coach.notDischarged).toMatch(/without discharging/)
+    expect(es.coach.notDischarged).toMatch(/sin descargar/)
+  })
+  it('a correct record never triggers notDischarged', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    warmUp(a)
+    measure(a, 'violet')
+    const m = a.measurements[0]!
+    expect(coachCandidates(a, { type: 'record', typed: m.U0_V, measurement: m })).not.toContain('notDischarged')
+  })
+  it('first-u0 does not accept a yellow reading taken without discharging', () => {
+    const t = TASKS.find((x) => x.id === 'first-u0')!
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    measure(a, 'violet')
+    a.setArm(a.linePosition('yellow'))
+    // the capacitor sits at the violet plateau; typed value equals what the needle shows, whatever it is
+    a.record(expectedPlateau_V('lab', 'yellow'))
+    expect(a.measurements[1]!.dischargedSinceAlign).toBe(false)
+    expect(t.success(a)).toBe(false)
+    measure(a, 'yellow')
+    expect(t.success(a)).toBe(true)
+  })
+  it('planck counts only discharged measurements', () => {
+    const t = TASKS.find((x) => x.id === 'planck')!
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    for (const id of VISIBLE_LINES.slice(0, 3)) measure(a, id)
+    a.setArm(a.linePosition('violet'))
+    run(a, 60)
+    a.record(1.4)
+    expect(t.success(a)).toBe(false)
+  })
+  it('planck success is relative to the model of the mode, not the true h', () => {
+    const t = TASKS.find((x) => x.id === 'planck')!
+    const exp = expectedFitH_Js('lab')
+    expect(exp).toBeLessThan(H_Js * 0.95) // the clean lab bench reads low
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    for (const id of VISIBLE_LINES) measure(a, id)
+    const h = a.fitResult()!.h_Js
+    expect(Math.abs(h - exp) / exp).toBeLessThan(0.1)
+    expect(Math.abs(h - H_Js) / H_Js).toBeGreaterThan(0.05)
+    expect(t.success(a)).toBe(true)
+  })
+  it('planck fails and hints "fitOff" when one point is far off', () => {
+    const t = TASKS.find((x) => x.id === 'planck')!
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    for (const id of VISIBLE_LINES.slice(0, 3)) measure(a, id)
+    // violet recorded far too low (settled and discharged, but a bad value)
+    a.setArm(a.linePosition('violet'))
+    a.pressKey(); run(a, 3); a.releaseKey()
+    for (let i = 0; i < 400 && !a.isSettled(); i++) run(a, 10)
+    a.record(0.7)
+    expect(t.success(a)).toBe(false)
+    expect(t.hints.find((h) => h.when(a))!.key).toBe('fitOff')
+    expect(en.hints.fitOff).toBe('Your h is far off. Re-measure the point furthest from the line.')
+  })
+  it('planck and first-u0 hint at the speed control', () => {
+    for (const id of ['planck', 'first-u0']) {
+      const t = TASKS.find((x) => x.id === id)!
+      expect(t.hints.some((h) => h.key === 'speedUp'), id).toBe(true)
+    }
+    expect(en.task['first-u0'].act).toMatch(/speed/)
+  })
+  it('find-line needs violet on the cell first, then yellow', () => {
+    const t = TASKS.find((x) => x.id === 'find-line')!
+    const a = new Apparatus({ mode: 'explore' })
+    applyInitial(a, t)
+    a.setLamp(true)
+    a.setArm(a.linePosition('yellow'))
+    expect(t.success(a)).toBe(false) // yellow without violet
+    a.setArm(a.linePosition('violet'))
+    expect(t.success(a)).toBe(false) // violet but not yet yellow
+    a.setArm(a.linePosition('yellow'))
+    expect(t.success(a)).toBe(true)
+  })
+  it('find-line ignores violet seen while the lamp was off', () => {
+    const t = TASKS.find((x) => x.id === 'find-line')!
+    const a = new Apparatus({ mode: 'explore' })
+    applyInitial(a, t)
+    a.setArm(a.linePosition('violet'))
+    a.setLamp(true)
+    a.setArm(a.linePosition('yellow'))
+    expect(t.success(a)).toBe(false)
+  })
+  it('threshold requires the violet line, not blue or yellow', () => {
+    const t = TASKS.find((x) => x.id === 'threshold')!
+    for (const id of ['yellow', 'blue'] as const) {
+      const a = new Apparatus({ mode: 'explore' })
+      applyInitial(a, t)
+      a.setOverrides({ cathode: 'Zn' })
+      a.setLamp(true); a.setSpeed(20); run(a, 70)
+      a.setArm(a.linePosition(id))
+      a.pressKey(); run(a, 1); a.releaseKey(); run(a, 40)
+      expect(t.success(a), id).toBe(false)
+    }
+    expect(en.task.threshold.title).toBe('Bright but below threshold')
+    expect(es.task.threshold.title).toBe('Mucha luz, pero bajo el umbral')
+  })
+  it('planck prediction is a choice with answer h/e (index 1)', () => {
+    const t = TASKS.find((x) => x.id === 'planck')!
+    expect(t.predict).toEqual({ kind: 'choice', answer: 1 })
+    for (const d of [en, es]) expect(d.task.planck.options[1]).toBe('h/e')
+  })
+  it('every choice answer index points at an option in both languages', () => {
+    for (const t of TASKS) {
+      if (t.predict.kind !== 'choice') continue
+      for (const d of [en, es]) expect(d.task[t.id as keyof typeof en.task].options[t.predict.answer], t.id).toBeTruthy()
+    }
+  })
+  it('hν text comes from one formatter and has no hard-coded energies in the strings', () => {
+    expect(photonEnergyText('yellow', 'en')).toBe('2.15')
+    expect(photonEnergyText('yellow', 'es')).toBe('2,15')
+    expect(energyVars('en').Ev).toBe('3.06')
+    for (const d of [en, es]) for (const t of Object.values(d.task)) expect(`${t.explain}${t.teacher}`).not.toMatch(/2[.,]14|3[.,]4 eV/)
+    expect(teacherKey()).toContain('| yellow 578 nm | 519 | 2.15 |')
+  })
+  it('Spanish uses raya / pulsador / multímetro consistently', () => {
+    const all = JSON.stringify(es)
+    expect(all).not.toMatch(/línea|Línea|medidor|Medidor|tecla\b|trabajo de extracción/)
+  })
+  it('new strings exist in both languages', () => {
+    expect(en.checklist.steps.cover).toBe('Room dim or window cover closed')
+    expect(es.checklist.steps.cover).toBe('Sala en penumbra o tapa de la ventana cerrada')
+    expect(en.checklist.steps.wait).toBe('Wait for the plateau without touching anything')
+    expect(es.ui.verdictRight).toBe('¡Acertaste!')
+    expect(en.ui.verdictWrong).toBe('Not this time.')
   })
 })

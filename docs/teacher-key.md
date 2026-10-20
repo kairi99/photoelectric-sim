@@ -25,6 +25,12 @@ The leaflet example (Table 1) reads 0.59, 0.70, 1.23, 1.40 V, close to the lab c
 | Explore, dirty photocell | 6.38 | -3.6 % | 0.00399 | -1.463 |
 | Explore, stray light (0.000084) | 5.96 | -10.1 % | 0.00372 | -1.247 |
 
+### Why the clean Lab run is about −10 %
+
+The Lab bench is not ideal: the cell leaks (2.2×10¹² Ω) so the high plateaus sag most, and a small stray-light fraction (0.002) from bluer lines lifts the yellow and green plateaus. Both flatten the U0 vs ν line, so the clean Lab fit gives 5.90×10⁻³⁴ J·s (-11.0 %). The leaflet's own bench gives 6.1×10⁻³⁴ (about −8 %). This is a property of the bench model, not an error of the student.
+
+The `planck` task therefore tests h against the Lab model value 5.90, with a ±10 % window: 5.31 to 6.49×10⁻³⁴ J·s. A needle misreading of up to 0.02 V in the worst pattern moves h only to 5.65–6.15 (-4.2 % to 4.2 %), so honest reading keeps a margin of about 5.8 percentage points inside the limit. A single bad point (e.g. a line recorded without discharging) pushes the fit out of the window and triggers the hint.
+
 True h = 6.63×10⁻³⁴ J·s (e = 1.6022×10⁻¹⁹ C). The leaflet obtains 6.1×10⁻³⁴.
 The intercept of e·U0 vs ν is not the cathode work function (anode work function enters, leaflet eq. VII).
 
@@ -53,7 +59,7 @@ Zn work function in the model: 4.3 eV. Violet photon: 3.06 eV, so no emission, w
 Level 1 · explore mode · concept: Photon energy
 
 - Prediction answer: **Violet, 405 nm**
-- Success: Lamp on and the yellow line aligned on the cell (`lineOnCell() === "yellow"`).
+- Success: Lamp on, the violet line was on the cell at some point during the task, and now the yellow line is aligned (`lineOnCell() === "yellow"`).
 - Teacher note: Common mistake: picking the longest wavelength or the brightest line. Stress that frequency runs opposite to wavelength. This sets up the later tasks, where U0 grows with ν. About 2 minutes.
 
 ### `first-u0` — Your first U0
@@ -61,38 +67,38 @@ Level 1 · explore mode · concept: Photon energy
 Level 1 · lab mode · concept: Limit voltage
 
 - Prediction answer: **≈ 0.6 V**
-- Success: A settled yellow measurement within ±0.05 V of the noise-free plateau of the mode (see table).
-- Teacher note: Leaflet value 0.59 V; the simulated lab plateau is in docs/teacher-key.md. Tolerance ±0.05 V allows honest needle reading (~0.02 V). Typical mistake: 2.1 V, equating e·U0 with h·ν and forgetting W. Also remind them not to touch the setup while measuring.
+- Success: A valid (settled and discharged) yellow measurement within ±0.05 V of the noise-free plateau of the mode (see table).
+- Teacher note: Leaflet value 0.59 V; the simulated lab plateau is in docs/teacher-key.md. Tolerance ±0.05 V allows honest needle reading (~0.02 V). The reading only counts if the capacitor was discharged after the line was set. Typical mistake: 2.1 V, equating e·U0 with h·ν and forgetting W. Also remind them not to touch the setup while measuring.
 
 ### `intensity` — Brighter, higher U0?
 
 Level 2 · explore mode · concept: Intensity vs energy
 
 - Prediction answer: **The same**
-- Success: Two settled measurements of the same line, one at beam intensity ≥ 0.9 and one at ≤ 0.3.
+- Success: Two valid (settled and discharged) measurements of the same line, one at beam intensity ≥ 0.9 and one at ≤ 0.3.
 - Teacher note: Answer: the same (to within noise). Misconception: more light means faster electrons. Point at the live chart: the slope differs, the plateau does not. Wait times grow at low beam intensity, so encourage speed ×20.
 
 ### `planck` — Measure Planck's constant
 
 Level 2 · lab mode · concept: h from the slope
 
-- Prediction answer: free number (h in 10⁻³⁴ J·s, recalled at the end, no check)
-- Success: Four distinct settled lines and a fit with h within 15 % of 6.63×10⁻³⁴ J·s.
-- Teacher note: Success: four settled lines and h within 15 % of the true value. Expected fit values per mode are in docs/teacher-key.md. Ask the class why the result is often 5–10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).
+- Prediction answer: **h/e**
+- Success: Four distinct valid lines (settled and discharged) and a fit with h within 10 % of the Lab model value 5.90×10⁻³⁴ J·s (not of the true 6.63).
+- Teacher note: Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).
 
-### `threshold` — No light, no electrons
+### `threshold` — Bright but below threshold
 
 Level 3 · explore mode · concept: Threshold frequency
 
 - Prediction answer: **No, not at all**
-- Success: Cathode Zn, lamp warm, a visible line aligned, key released ≥ 30 s ago and U < 10 mV.
-- Teacher note: Answer: no. Misconception: enough intensity must eventually eject electrons (classical wave picture). Even the 365 nm UV line (3.4 eV) is below Zn here, and it is not on the window anyway. Contrast with the previous tasks, where only the colour set U0.
+- Success: Cathode Zn, lamp warm, the violet line aligned, key released ≥ 30 s ago and U < 10 mV.
+- Teacher note: Answer: no. Misconception: enough intensity must eventually eject electrons (classical wave picture). Even the 365 nm UV line (3.40 eV) is below Zn here; the UV line is invisible and weak, and it is not on the window anyway. Contrast with the previous tasks, where only the colour set U0.
 
 ### `error-sources` — When the bench lies
 
 Level 3 · explore mode · concept: Systematic errors
 
 - Prediction answer: **Lower**
-- Success: Dirty or stray light on, four distinct settled lines measured with the error active, and a fit available.
+- Success: Dirty or stray light on, four distinct valid (settled and discharged) lines measured with the error active, and a fit available.
 - Teacher note: Answer: lower, in both cases (verified against the model; numbers in docs/teacher-key.md). With the stray preset the fit gives an h about 10 % low and yellow and green nearly merge; with more stray light they would collapse onto one value. Link to the leaflet notes on cleaning.
 

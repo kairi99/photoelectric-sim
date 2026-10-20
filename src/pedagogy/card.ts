@@ -8,7 +8,7 @@ import type { ChecklistView } from './checklist.ts'
 import { button, el, store } from './dom.ts'
 import { fmt, pt } from './strings.ts'
 import type { PedagogyDict } from './strings.ts'
-import { applyInitial } from './task.ts'
+import { applyInitial, energyVars } from './task.ts'
 import type { GuidedTask } from './task.ts'
 import { TASKS } from './tasks/index.ts'
 
@@ -193,7 +193,8 @@ export function mountLearn(root: HTMLElement, ctx: PedContext): Learn {
       fitLine(bodyEl)
       button(s.ui.next, 'primary', bodyEl, () => go(3))
     } else {
-      el('p', '', bodyEl).textContent = x.explain
+      verdict(k, bodyEl)
+      el('p', '', bodyEl).textContent = fmt(x.explain, energyVars(ctx.lang()))
       fitLine(bodyEl)
       const dl = el('dl', 'recall', bodyEl)
       el('dt', '', dl).textContent = s.ui.yourPrediction
@@ -205,7 +206,7 @@ export function mountLearn(root: HTMLElement, ctx: PedContext): Learn {
     if (teacher) {
       const d = el('details', 'teacher', wrap)
       el('summary', '', d).textContent = s.ui.teacher
-      el('p', '', d).textContent = x.teacher
+      el('p', '', d).textContent = fmt(x.teacher, energyVars(ctx.lang()))
     }
   }
 
@@ -213,6 +214,12 @@ export function mountLearn(root: HTMLElement, ctx: PedContext): Learn {
     if (!task || task.id !== 'planck') return
     const f = a.fitResult()
     el('p', 'ped-fit', parent).textContent = f ? fmt(S().ui.yourFit, { h: (f.h_Js / 1e-34).toFixed(2) }) : S().ui.noFit
+  }
+  /** Choice predictions: tell the student whether they were right before the explanation. */
+  const verdict = (k: GuidedTask, parent: Element): void => {
+    if (k.predict.kind !== 'choice' || prediction === null) return
+    const right = Number(prediction) === k.predict.answer
+    el('p', `ped-verdict ${right ? 'is-right' : 'is-wrong'}`, parent).textContent = `${right ? '✓' : '✗'} ${right ? S().ui.verdictRight : S().ui.verdictWrong}`
   }
   const predictionText = (k: GuidedTask): string => {
     if (prediction === null) return S().ui.noPrediction

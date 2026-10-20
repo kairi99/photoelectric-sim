@@ -69,6 +69,9 @@ export interface SpectrumLine {
   intensity: number
 }
 
+/** The capacitor counts as discharged below this voltage (V) while the key is held. */
+export const DISCHARGED_V = 0.01
+
 export type ActionType =
   | 'lampOn' | 'lampOff' | 'meterOn' | 'range' | 'lineAligned' | 'discharged' | 'released' | 'waited' | 'recorded'
 export interface LogEntry {
@@ -90,6 +93,11 @@ export interface Measurement {
   dirty: boolean
   /** Explore override "stray light" active when recorded. */
   stray: boolean
+  /**
+   * True only if, since the line was last aligned on the cell, the key was held until the capacitor read below
+   * DISCHARGED_V and then released. False means leftover charge from another line may be in the reading.
+   */
+  dischargedSinceAlign: boolean
 }
 export type RecordResult = { ok: true; measurement: Measurement } | { ok: false; error: 'invalid-value' | 'value-required' | 'meter-off' }
 
@@ -200,6 +208,10 @@ export class Apparatus {
   private waitedLogged = false
   private dischargedLogged = false
   private lastAligned: HgLineId | null = null
+  /** Capacitor was held below DISCHARGED_V since the last alignment (key still down or released). */
+  private dischargeReached = false
+  /** ...and the key was released afterwards. */
+  private dischargedOk = false
   private rng: () => number
   private history: HistoryPoint[] = []
   private histEvery_s = CHUNK_s
@@ -258,6 +270,8 @@ export class Apparatus {
     this.hasReleased = false
     this.procedureLog = []
     this.lastAligned = null
+    this.dischargeReached = false
+    this.dischargedOk = false
     this.rng = mulberry32(this.seed)
     this.resetRelease()
     if (hadMeasurements) this.emit('measurements', undefined)
@@ -388,6 +402,7 @@ export class Apparatus {
     this.keyPressed = false
     this.releaseTime_s = this.clock_s
     this.hasReleased = true
+    if (this.dischargeReached) this.dischargedOk = true
     this.resetRelease()
     this.log('released')
     this.emit('release', { t_s: this.clock_s })
@@ -434,7 +449,12 @@ export class Apparatus {
     const a = this.lineOnCell()
     if (a !== this.lastAligned) {
       this.lastAligned = a
-      if (a) this.log('lineAligned', a)
+      if (a) {
+        // a new line starts a new discharge -> release -> wait -> record cycle
+        this.dischargeReached = false
+        this.dischargedOk = false
+        this.log('lineAligned', a)
+      }
     }
   }
 
@@ -577,8 +597,10 @@ export class Apparatus {
       }
     }
 
+    if (this.keyPressed && this.U_V < DISCHARGED_V) this.dischargeReached = true
+
     // procedure log
-    if (this.keyPressed && !this.dischargedLogged && this.U_V < 0.02) {
+    if (this.keyPressed && !this.dischargedLogged && this.U_V < DISCHARGED_V) {
       this.dischargedLogged = true
       this.log('discharged')
     }
@@ -654,6 +676,7 @@ export class Apparatus {
       beamIntensity: this.effectiveBeam(),
       dirty: this.mode === 'explore' && this.dirty,
       stray: this.mode === 'explore' && (this.stray_fraction ?? 0) > 0,
+      dischargedSinceAlign: this.dischargedOk,
     }
     this.measurements.push(m)
     this.log('recorded', v)

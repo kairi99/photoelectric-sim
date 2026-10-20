@@ -90,8 +90,8 @@ export const strings: Strings<S> = {
     nPoints: (n) => `${n} puntos`,
     infoLabel: 'Sobre la ordenada en el origen',
     infoText:
-      'La ordenada en el origen se relaciona con el trabajo de extracción del ánodo, no del cátodo: al conectarlos se igualan sus niveles de Fermi, así que los electrones deben vencer W_A + e·U₀.',
-    noFit: 'Registra al menos dos líneas distintas para ver el ajuste.',
+      'La ordenada en el origen se relaciona con la función de trabajo del ánodo, no del cátodo: al conectarlos se igualan sus niveles de Fermi, así que los electrones deben vencer W_A + e·U₀.',
+    noFit: 'Registra al menos dos rayas distintas para ver el ajuste.',
     lines: { yellow: 'amarilla', green: 'verde', blue: 'azul', violet: 'violeta', uv: 'UV' },
   },
 }

@@ -392,3 +392,49 @@ describe('explore error toggles', () => {
     expect(dirty.U[3]!).toBeLessThan(clean.U[3]! - 0.02)
   })
 })
+
+describe('dischargedSinceAlign', () => {
+  const lab = (): Apparatus => {
+    const a = new Apparatus({ mode: 'lab', seed: 3 })
+    a.setLamp(true); a.setRange(3); a.setSpeed(5)
+    run(a, 70)
+    return a
+  }
+  it('is true after align, hold until ~0, release', () => {
+    const a = lab()
+    a.setArm(a.linePosition('violet'))
+    a.pressKey(); run(a, 5); a.releaseKey(); run(a, 30)
+    expect(a.record(1.4).ok && a.measurements[0]!.dischargedSinceAlign).toBe(true)
+  })
+  it('is false when the line changes and the key is not used again', () => {
+    const a = lab()
+    a.setArm(a.linePosition('violet'))
+    a.pressKey(); run(a, 5); a.releaseKey(); run(a, 60)
+    a.setArm(a.linePosition('yellow'))
+    run(a, 30)
+    a.record(1.5)
+    expect(a.measurements[0]!.dischargedSinceAlign).toBe(false)
+  })
+  it('is false when the key is pressed too briefly, or never released', () => {
+    const a = lab()
+    a.setArm(a.linePosition('violet'))
+    a.pressKey(); run(a, 5); a.releaseKey(); run(a, 60)
+    a.setArm(a.linePosition('yellow'))
+    a.setSpeed(1)
+    a.pressKey(); a.tick(0.05); a.releaseKey(); run(a, 20)
+    a.record(1.3)
+    expect(a.measurements[0]!.dischargedSinceAlign).toBe(false)
+    a.setArm(a.linePosition('green'))
+    a.pressKey(); run(a, 5) // still held
+    a.record(0)
+    expect(a.measurements[1]!.dischargedSinceAlign).toBe(false)
+  })
+  it('a discharge before the alignment does not count', () => {
+    const a = lab()
+    a.pressKey(); run(a, 5); a.releaseKey()
+    a.setArm(a.linePosition('blue'))
+    run(a, 20)
+    a.record(0.5)
+    expect(a.measurements[0]!.dischargedSinceAlign).toBe(false)
+  })
+})

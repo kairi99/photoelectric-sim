@@ -2,7 +2,10 @@
 import type { Apparatus, Measurement } from '../apparatus/index.ts'
 import { VISIBLE_LINES } from './task.ts'
 
-export type CoachKey = 'releasedMeterOff' | 'overRange' | 'recordUnsettled' | 'lampWarming' | 'armBetween' | 'typedFar' | 'openFit'
+export type CoachKey = 'releasedMeterOff' | 'overRange' | 'recordUnsettled' | 'lampWarming' | 'armBetween' | 'typedFar' | 'openFit' | 'notDischarged'
+
+/** Nudges that show every time they apply, not once per session (a safety net for a wrong measurement). */
+export const ALWAYS_KEYS: readonly CoachKey[] = ['notDischarged']
 
 /** A typed value further than this from the needle triggers "read the needle again" (V). */
 export const TYPED_FAR_V = 0.15
@@ -21,6 +24,7 @@ export function coachCandidates(a: Apparatus, e: CoachEvent): CoachKey[] {
     if (a.lampOn && r.lampBrightness < 0.99) out.push('lampWarming')
     if (a.lampOn && (r.lineOnCell === null || r.lineOnCell === 'uv')) out.push('armBetween')
   } else if (e.type === 'record') {
+    if (e.measurement.lineId !== null && !e.measurement.dischargedSinceAlign) out.push('notDischarged')
     if (!e.measurement.settled) out.push('recordUnsettled')
     if (a.mode === 'lab' && e.typed !== undefined && r.needleValue_V !== null && Math.abs(e.typed - r.needleValue_V) > TYPED_FAR_V) out.push('typedFar')
     const lines = new Set(a.measurements.map((m) => m.lineId).filter((l) => l && (VISIBLE_LINES as readonly string[]).includes(l)))
@@ -34,6 +38,7 @@ export class Coach {
   /** First candidate not yet shown this session; marks it shown. */
   pick(a: Apparatus, e: CoachEvent): CoachKey | null {
     for (const k of coachCandidates(a, e)) {
+      if (ALWAYS_KEYS.includes(k)) return k
       if (!this.shown.has(k)) {
         this.shown.add(k)
         return k
@@ -51,7 +56,7 @@ import { pt } from './strings.ts'
 
 export const COACH_VISIBLE_MS = 12000
 
-/** Non-blocking toast in the dock. Each nudge shows at most once per session and can be dismissed. */
+/** Non-blocking toast in the dock. Each nudge shows at most once per session (except the discharge warning) and can be dismissed. */
 export function mountCoach(dock: HTMLElement, ctx: ViewContext): { update(): void; relabel(): void; destroy(): void } {
   const a = ctx.apparatus
   const coach = new Coach()
