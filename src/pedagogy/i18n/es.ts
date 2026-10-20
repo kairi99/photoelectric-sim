@@ -48,6 +48,7 @@ export const es: PedagogyDict = {
     steps: {
       bench: { title: 'La mesa', body: 'Lámpara, prisma y fotocélula. Una raya brillante del espectro del mercurio cae sobre la fotocélula.' },
       bench3d: { title: 'Maneja el banco 3D', body: 'Arrastra la perilla del brazo para mover la fotocélula, mantén pulsado el pulsador rojo para descargar y gira la perilla de rango del multímetro. Orbita arrastrando el espacio vacío.' },
+      controls: { title: '¿Prefieres deslizadores y botones?', body: 'Mostrar controles abre el panel completo, con opciones extra en Explorar (filtro del haz, cátodo, fuentes de error).' },
       arm: { title: 'Brazo giratorio', body: 'Gira el brazo para llevar una raya de color a la célula. Usa el deslizador o las flechas del teclado.' },
       lamp: { title: 'Lámpara', body: 'Enciende primero la lámpara. Tarda cerca de un minuto en dar toda su luz.' },
       meter: { title: 'Multímetro', body: 'Mide la tensión del condensador. Elige el rango de 3 V y lee la aguja.' },

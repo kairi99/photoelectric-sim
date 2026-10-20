@@ -49,7 +49,7 @@ export function checklistState(a: Apparatus): ChecklistItem[] {
   return [
     { id: 'lamp', done: a.lampOn && r0.lampBrightness >= 0.99 },
     { id: 'meter', done: a.meterRange === 3 },
-    { id: 'cover', done: !a.roomLights || a.windowCover >= COVER_MIN },
+    { id: 'cover', done: a.mode !== 'lab' || !a.roomLights || a.windowCover >= COVER_MIN },
     { id: 'line', done: line !== null && line !== 'uv' },
     { id: 'discharge', done: d >= 0 },
     { id: 'release', done: r >= 0 },

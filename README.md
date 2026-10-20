@@ -6,7 +6,7 @@ A browser-based, physics-driven simulation of the compact photoelectric-effect e
 
 ![Desktop, Explore mode](docs/screenshots/explore-desktop.png)
 
-**3D bench.** The whole setup of the leaflet's Fig. 2 is modelled in 3D (three.js): choke, Hg lamp, the compact arrangement with its lenses, slit, prism and mirror, the swivelling arm with the photocell, the electrometer amplifier with capacitor and key switch, the multimeter and the cables. Students operate it directly: drag the thread-guide knob to swing the arm, hold the red key to discharge, turn the range knob, flip the lamp switch, slide the window cover. Camera presets: overview, optics, meter, top view. A 2D bench is one tap away and is used automatically when WebGL is unavailable; the controls below the stage work in both.
+**3D bench.** The whole setup of the leaflet's Fig. 2 is modelled in 3D (three.js): choke, Hg lamp, the compact arrangement with its lenses, slit, prism and mirror, the swivelling arm with the photocell, the electrometer amplifier with capacitor and key switch, the multimeter and the cables. Students operate it directly: drag the thread-guide knob to swing the arm, hold the red key to discharge, turn the range knob, flip the lamp switch, slide the window cover. Camera presets: overview, optics, meter, top view. A 2D bench is one tap away and is used automatically when WebGL is unavailable; in 3D the 2D control panels are tucked away by default (a calm view for students) and a Show controls button opens them, with the extra Explore options; in 2D they are always shown.
 
 ## Using it in class
 

@@ -256,7 +256,7 @@ export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
   relabelers.push(() => { hint.textContent = S().tapHint })
 
   // ---------------------------------------------------------------- controls
-  const controls = htmlEl('div', { class: 'bench-controls' }, wrap)
+  const controls = htmlEl('div', { class: 'bench-controls', id: 'bench-controls' }, wrap)
   const ctl = (name: string, cls = ''): HTMLDivElement => htmlEl('div', { class: `ctl ${cls}`.trim(), 'data-ctl': name }, controls)
   const ctls = new Map<string, HTMLElement>()
 
@@ -323,7 +323,9 @@ export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
   }
   const setStrayChk = mkToggle('stray', 'only-explore', (v) => a.setOverrides({ stray_fraction: v ? STRAY_PRESET : null }), () => S().stray)
   const setDirtyChk = mkToggle('dirty', 'only-explore', (v) => a.setOverrides({ dirty: v }), () => S().dirty)
-  const setRoomChk = mkToggle('roomLights', 'only-lab', (v) => a.setRoomLights(v), () => S().roomLights)
+  const setRoomChk = mkToggle('roomLights', '', (v) => a.setRoomLights(v), () => S().roomLights)
+  const roomHelp = htmlEl('p', { class: 'ctl-help' }, ctls.get('roomLights')!)
+  relabelers.push(() => { roomHelp.textContent = a.mode === 'lab' ? S().roomLightsHelpLab : S().roomLightsHelpExplore })
 
   // Lamp prompt: fills the empty band of the stage while the lamp is off (a button), then shows warm-up progress.
   const promptG = svgEl('g', { class: 'bench-prompt', role: 'button', tabindex: 0, transform: 'translate(180 140)' }, svg)
@@ -461,6 +463,8 @@ export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
     setStrayChk(String(a.stray_fraction !== null && a.stray_fraction > 0))
     setDirtyChk(String(a.dirty))
     setRoomChk(String(a.roomLights))
+    const rh = a.mode === 'lab' ? s.roomLightsHelpLab : s.roomLightsHelpExplore
+    if (roomHelp.textContent !== rh) roomHelp.textContent = rh
   }
 
   const relabel = (): void => { for (const f of relabelers) f(); update() }

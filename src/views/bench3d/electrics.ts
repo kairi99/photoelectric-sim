@@ -10,7 +10,7 @@ import { cableCurve } from './electrics/cableCurve.ts'
 import { drawAmpPlate, drawDial, drawKnobPlate, drawLabel } from './electrics/dial.ts'
 import { easeTo, stepNeedle, type Spring } from './electrics/dynamics.ts'
 import {
-  AMP, CABLES, DIAL_CM, DIAL_PIVOT_CM, DIAL_PX, METER, METER_FACE, METER_KNOB_V, METER_TERMINALS, PLATE, PLATE_CM,
+  AMP, BLOCK_SOCKET_Y, CABLES, CAP_BLOCK, KEY_BLOCK, SUPPLY_BOX, DIAL_CM, DIAL_PIVOT_CM, DIAL_PX, METER, METER_FACE, METER_KNOB_V, METER_TERMINALS, PLATE, PLATE_CM,
   SOCKET_FRONT, knobAngleDeg, needleTargetFraction,
 } from './electrics/layout.ts'
 
@@ -68,6 +68,15 @@ export const buildElectrics: Builder = (ctx) => {
     add(parent, cylZ(0.1, 0.1, 8), M.metal, x, y, z0 + SOCKET_FRONT, false)
   }
 
+  /** 4 mm contact socket on the back face (towards the amplifier) of a plug-in block, z0 = half depth of the block. */
+  const backSocket = (block: THREE.Object3D, z0: number): void => {
+    const g = new T.Group()
+    g.position.set(0, BLOCK_SOCKET_Y, -z0)
+    g.rotation.y = Math.PI
+    block.add(g)
+    socket4(g, 0, 0, 0, dark)
+  }
+
   // ================================================================ universal choke 451 30
   const choke = new T.Group()
   choke.position.set(-37.2, 0, 0)
@@ -114,6 +123,8 @@ export const buildElectrics: Builder = (ctx) => {
   const at = (p: { u: number; v: number }): [number, number, number] => [p.u, AMP.h / 2 + p.v, AMP.d / 2]
   socketBnc(amp, ...at(PLATE.bnc))
   socket4(amp, ...at(PLATE.groundA), dark)
+  socket4(amp, ...at(PLATE.capIn), dark)
+  socket4(amp, ...at(PLATE.keyIn), dark)
   socket4(amp, ...at(PLATE.supply), dark)
   socket4(amp, ...at(PLATE.outRed), M.cable.red)
   socket4(amp, ...at(PLATE.outBlue), M.cable.blue)
@@ -138,10 +149,11 @@ export const buildElectrics: Builder = (ctx) => {
 
   // ================================================================ capacitor 578 22 on a plug-in block
   const cap = new T.Group()
-  cap.position.set(16.5, 0, 5)
+  cap.position.set(CAP_BLOCK.x, 0, CAP_BLOCK.z)
   root.add(cap)
   add(cap, rbox(3.4, 0.9, 2.6, 0.25, 2), dark, 0, 0.45, 0)
   for (const x of [-0.7, 0.7]) add(cap, track(new T.CylinderGeometry(0.16, 0.16, 0.5, 10)), M.metal, x, 1.05, 0, false) // pins
+  backSocket(cap, CAP_BLOCK.d / 2)
   add(cap, rbox(2.3, 2.7, 1.1, 0.22, 3), blueBody, 0, 0.9 + 1.35, 0)
   const capLabel = canvasTex(256, 256, (g) => drawLabel(g, 256, 256, ['100 pF', '630 V'], '#2a5aa8', '#f4f1e6'))
   add(cap, track(new T.PlaneGeometry(1.9, 1.9)), printed(capLabel.tex), 0, 0.9 + 1.4, 0.56, false)
@@ -149,9 +161,10 @@ export const buildElectrics: Builder = (ctx) => {
 
   // ================================================================ key switch 579 10 on a plug-in block
   const key = new T.Group()
-  key.position.set(20, 0, 12)
+  key.position.set(KEY_BLOCK.x, 0, KEY_BLOCK.z)
   root.add(key)
   add(key, rbox(4, 0.9, 3.2, 0.25, 2), dark, 0, 0.45, 0)
+  backSocket(key, KEY_BLOCK.d / 2)
   add(key, track(new T.CylinderGeometry(1.05, 1.15, 1.3, 28)), M.metal, 0, 0.9 + 0.65, 0)
   const KEY_REST_Y = 0.9 + 1.3 + 0.4, KEY_TRAVEL = 0.55
   const capMesh = add(key, track(new T.CylinderGeometry(0.8, 0.86, 0.8, 28)), M.cable.red, 0, KEY_REST_Y, 0)
@@ -165,12 +178,13 @@ export const buildElectrics: Builder = (ctx) => {
 
   // ================================================================ plug-in supply 562 791
   const supply = new T.Group()
-  supply.position.set(27, 0, 12)
+  supply.position.set(SUPPLY_BOX.x, 0, SUPPLY_BOX.z)
   root.add(supply)
   add(supply, rbox(5, 5.5, 4, 0.5), M.rubber, 0, 2.75, 0)
   const supLabel = canvasTex(256, 128, (g) => drawLabel(g, 256, 128, ['12 V ~', '562 791'], '#d9d7d0', '#1b1d21'))
   add(supply, track(new T.PlaneGeometry(3.4, 1.7)), printed(supLabel.tex), 0, 3.3, 2.012, false)
   add(supply, rbox(1.2, 0.5, 0.2, 0.1, 2), M.metal, 0, 1.4, 2.02, false)
+  add(supply, track(new T.CylinderGeometry(0.4, 0.4, 0.3, 12).rotateX(Math.PI / 2)), M.rubber, 0, 1.4, -SUPPLY_BOX.d / 2 - 0.05, false) // cord grommet
   ctx.parts.registerPart('supply', supply, { labelKey: 'parts.supply.name', infoKey: 'parts.supply.info' })
 
   // ================================================================ multimeter 531 120
@@ -305,6 +319,7 @@ export const buildElectrics: Builder = (ctx) => {
 
   return {
     update(r) {
+      dialMat.color.setScalar(1 - 0.22 * (ctx.darkness?.() ?? 0)) // faint spill light in the dark room, still readable
       needleTarget = needleTargetFraction(r)
       knobTarget = knobAngleDeg(r.meterRange)
       keyTarget = r.keyPressed ? 1 : 0

@@ -171,3 +171,19 @@
   .bench3d-presets button[aria-pressed='true'] { background: var(--accent-fill); }
   .bench3d-card { top: calc(var(--touch) + var(--space-3)); }
 }
+
+/* 3D room lights */
+.bench3d-lights {
+  position: absolute; top: var(--space-2); right: var(--space-2); z-index: 3; width: var(--touch); height: var(--touch);
+  display: grid; place-items: center; padding: 0; border: none; border-radius: var(--radius-full); cursor: pointer;
+  background: color-mix(in srgb, var(--stage-plate) 78%, transparent); color: var(--stage-ink); backdrop-filter: blur(6px);
+  transition: background var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+.bench3d-lights[aria-pressed='true'] { background: var(--accent-fill); color: var(--on-accent); }
+.bench3d-lights[aria-pressed='true'] svg { fill: currentColor; fill-opacity: 0.25; }
+.bench3d-lights:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .bench3d-lights { transition: none; } }
+@media (max-width: 819px) {
+  .bench3d-presets { right: calc(var(--touch) + var(--space-3)); }
+  .bench3d-card { right: calc(var(--touch) + var(--space-3)); }
+}

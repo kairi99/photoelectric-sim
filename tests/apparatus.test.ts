@@ -312,6 +312,30 @@ describe('settled detector (projected remaining rise, not a fixed rate)', () => 
   })
 })
 
+describe('room lights by mode', () => {
+  it('default: explore lights on, lab darkened; reset follows the mode', () => {
+    expect(new Apparatus({ mode: 'explore' }).roomLights).toBe(true)
+    expect(new Apparatus({ mode: 'lab' }).roomLights).toBe(false)
+    const a = new Apparatus({ mode: 'lab' })
+    a.setMode('explore'); expect(a.roomLights).toBe(true)
+    a.setMode('lab'); expect(a.roomLights).toBe(false)
+  })
+  it('explore: setRoomLights toggles the flag but never changes the readout or U0', () => {
+    const run1 = (room: boolean): number => {
+      const a = new Apparatus({ mode: 'explore' })
+      a.setRoomLights(room)
+      expect(a.roomLights).toBe(room)
+      a.setLamp(true); a.setSpeed(5)
+      for (let i = 0; i < 700; i++) a.tick(0.1)
+      a.setArm(a.linePosition('yellow'))
+      a.pressKey(); a.tick(2); a.releaseKey()
+      for (let i = 0; i < 1200; i++) a.tick(0.1)
+      return a.serialize().U_V
+    }
+    expect(run1(true)).toBe(run1(false))
+  })
+})
+
 describe('window cover (12) and room light', () => {
   function reading(opts: { room: boolean; cover: number; id?: HgLineId; lamp?: boolean }): number {
     const a = new Apparatus({ mode: 'lab' })

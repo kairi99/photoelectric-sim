@@ -21,6 +21,8 @@ export interface BuildCtx {
   units: Units
   /** Ask for one more render. The scene renders on demand: call this whenever you change something outside `update`. */
   requestRender: () => void
+  /** Room darkness 0 (lit) .. 1 (dark room), animated. Optional so tests can omit it. */
+  darkness?: () => number
   /** Current UI language (for text drawn on textures: decimal comma in Spanish). Redraw in `relabel()`. */
   lang: () => Lang
   /** Camera preset the user last chose (stays set while orbiting). */

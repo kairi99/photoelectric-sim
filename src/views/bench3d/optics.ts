@@ -479,6 +479,7 @@ export const buildOptics: Builder = (ctx) => {
   let armPos = 0.5, armVel = 0, armTarget = 0.5, armInit = false
   let cellDom: LineId | null = null, cellStrength = 0
   const lensW = v3(0, 0, 0), cathW = v3(0, 0, 0)
+  let cellGain = 1
   const applyArm = (): void => {
     arm.rotation.y = armAimYaw(armPos)
     knob.rotation.y = knobAngleRad(armPos)
@@ -491,22 +492,25 @@ export const buildOptics: Builder = (ctx) => {
       cellBeam.set(lensW, cathW, 0.9, 0.3)
       cellOuter.color.copy(M.line[cellDom!].color); cellInner.color.copy(M.line[cellDom!].color)
       const o = opacityFromIntensity(cellStrength)
-      cellOuter.opacity = 0.22 * o; cellInner.opacity = 0.55 * o
+      cellOuter.opacity = Math.min(1, 0.22 * o * cellGain); cellInner.opacity = Math.min(1, 0.55 * o * cellGain)
     }
     ctx.requestRender()
   }
 
   const model: ReturnType<Builder> = {
     update(r, a) {
+      const dk = ctx.darkness?.() ?? 0 // dark room: the light itself must stand out
+      const gain = (k: number): number => 1 + k * dk
+      cellGain = gain(1.0)
       const b = r.lampOn ? Math.max(0, Math.min(1, r.lampBrightness)) : 0
       M.setLampGlow(b)
-      glowMat.opacity = 0.5 * b
-      lampLight.intensity = 70 * b
+      glowMat.opacity = Math.min(1, 0.5 * b * gain(0.9))
+      lampLight.intensity = 70 * b * gain(2.2)
       const beamF = r.mode === 'explore' ? a.beamIntensity : 1
       const s = b * beamF
       const lit = s > 0.01
       for (const c of whiteSegs) c.setVisible(lit)
-      whiteOuter.opacity = 0.04 * Math.min(1, s); whiteInner.opacity = 0.09 * Math.min(1, s)
+      whiteOuter.opacity = 0.04 * Math.min(1, s) * gain(1.5); whiteInner.opacity = 0.09 * Math.min(1, s) * gain(1.2)
 
       // the spectrum on the window and the cone of every line
       const spec = a.spectrumOnWindow()
@@ -524,8 +528,8 @@ export const buildOptics: Builder = (ctx) => {
         spotMat[id].color.copy(col); lineMat[id].color.copy(col); lineMatInner[id].color.copy(col)
         lineMatA[id].color.copy(col); lineMatInnerA[id].color.copy(col)
         spotMat[id].opacity = o
-        lineMat[id].opacity = 0.05 * o; lineMatInner[id].opacity = 0.12 * o
-        lineMatA[id].opacity = 0.05 * o * FAN_A_GAIN; lineMatInnerA[id].opacity = 0.12 * o * FAN_A_GAIN
+        lineMat[id].opacity = 0.05 * o * gain(1.5); lineMatInner[id].opacity = 0.12 * o * gain(1.2)
+        lineMatA[id].opacity = 0.05 * o * FAN_A_GAIN * gain(1.5); lineMatInnerA[id].opacity = 0.12 * o * FAN_A_GAIN * gain(1.2)
         if (show) {
           const w = l.overlap * l.intensity
           sum += w
@@ -534,7 +538,7 @@ export const buildOptics: Builder = (ctx) => {
       }
       cellDom = dom.id; cellStrength = sum
       cathodeMat.emissive.copy(dom.id ? M.line[dom.id].color : new T.Color(0))
-      cathodeMat.emissiveIntensity = Math.min(1.4, 1.8 * Math.sqrt(sum))
+      cathodeMat.emissiveIntensity = Math.min(1.4, 1.8 * Math.sqrt(sum)) * gain(0.6)
       setCover(a.windowCover)
 
       armTarget = r.armPosition

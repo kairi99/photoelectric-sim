@@ -46,6 +46,7 @@ export const en = {
     steps: {
       bench: { title: 'The bench', body: 'The lamp, prism and photocell. A bright line of the mercury spectrum falls on the photocell.' },
       bench3d: { title: 'Operate the 3D bench', body: 'Drag the knob on the arm to swing the photocell, hold the red key to discharge, turn the meter\'s range knob. Orbit by dragging empty space.' },
+      controls: { title: 'Want sliders and buttons instead?', body: 'Show controls opens the full control panel, with extra Explore options (beam filter, cathode, error sources).' },
       arm: { title: 'Swivelling arm', body: 'Turn the arm to bring one coloured line onto the cell. Try the slider or the arrow keys.' },
       lamp: { title: 'Lamp', body: 'Switch the lamp on first. It needs about a minute to reach full brightness.' },
       meter: { title: 'Multimeter', body: 'This reads the capacitor voltage. Choose the 3 V range and read the needle.' },

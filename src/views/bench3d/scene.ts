@@ -31,10 +31,10 @@ interface PresetDef {
   halfH: number
 }
 const PRESETS: Record<PresetName, PresetDef> = {
-  overview: { target: [-1, 2, 6], azimuth: 0, elevation: 35, halfW: 43, halfH: 18 },
+  overview: { target: [2, 2, 9], azimuth: 0, elevation: 36, halfW: 43, halfH: 20 },
   optics: { target: [-3, 3, 4], azimuth: -8, elevation: 38, halfW: 24, halfH: 11 },
   meter: { target: [38.5, 4, 12.5], azimuth: 12, elevation: 28, halfW: 10, halfH: 6.5 },
-  top: { target: [-1, 0, 5], azimuth: 0, elevation: 89, halfW: 48, halfH: 17 },
+  top: { target: [1, 0, 8], azimuth: 0, elevation: 89, halfW: 48, halfH: 21 },
 }
 const FOV = 35
 const TRANSITION_MS = 400
@@ -71,7 +71,7 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   const canvas = renderer.domElement
-  canvas.tabIndex = 0 // focusable: arrow keys orbit; the control strip below operates the same parts
+  canvas.tabIndex = 0 // focusable: arrow keys orbit; the control panel operates the same parts
   canvas.setAttribute('role', 'application')
   canvas.setAttribute('aria-label', bench3dStrings[ctx.lang()].canvasLabel)
   container.append(canvas)
@@ -101,7 +101,8 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   controls.screenSpacePanning = false
   if (matchMedia('(pointer: coarse)').matches) canvas.style.touchAction = 'pan-y' // keep vertical page scroll over the canvas
 
-  scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x20242c, 0.45))
+  const hemi = new THREE.HemisphereLight(0xcfe0ff, 0x20242c, 0.45)
+  scene.add(hemi)
   const sun = new THREE.DirectionalLight(0xffffff, 2.2)
   sun.position.set(-35, 110, 70)
   sun.target.position.set(0, 0, 4)
@@ -142,6 +143,20 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   let needsRender = true
   let visible = true
   const requestRender = (): void => { needsRender = true }
+
+  // ---------- room lights: 0 = lit, 1 = dark room, eased over ~300 ms (instant with reduced motion) ----------
+  const DIM_LEVEL = 0.15 // fraction of the room-light intensity that is left in the dark room
+  const HEMI_I = 0.45, SUN_I = 2.2, ENV_I = 0.9
+  const roomTarget = (): number => (a.roomLights ? 0 : 1)
+  let darkness = roomTarget()
+  const applyLighting = (): void => {
+    const level = 1 - (1 - DIM_LEVEL) * darkness
+    hemi.intensity = HEMI_I * level
+    sun.intensity = SUN_I * level
+    scene.environmentIntensity = ENV_I * level
+    ;(scene.background as THREE.Color).copy(materials.tokens.plate).multiplyScalar(1 - 0.55 * darkness)
+  }
+  applyLighting()
   controls.addEventListener('change', requestRender)
 
   // ---------- camera presets ----------
@@ -182,12 +197,12 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   // ---------- parts, builders ----------
   const parts = new PartRegistry(THREE, requestRender)
   let hovering = false
-  const buildCtx: BuildCtx = { scene, three: THREE, materials, parts, units, requestRender, lang: ctx.lang, preset: () => lastPreset, hovering: () => hovering }
+  const buildCtx: BuildCtx = { scene, three: THREE, materials, parts, units, requestRender, darkness: () => darkness, lang: ctx.lang, preset: () => lastPreset, hovering: () => hovering }
   const models: BuiltModel[] = BUILDERS.map((b) => b(buildCtx))
   let lastSig = ''
   const signature = (): string => {
     const r = a.readout()
-    return `${Object.values(r).join('|')}|${a.windowCover}|${a.beamIntensity}|${a.cathode}`
+    return `${Object.values(r).join('|')}|${a.windowCover}|${a.beamIntensity}|${a.cathode}|${a.roomLights}`
   }
   const pushState = (): void => {
     const r = a.readout()
@@ -233,7 +248,7 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   })
 
   // ---------- theme, visibility, context loss ----------
-  const onTheme = (): void => { materials.refresh(); interaction.refreshTheme(); (scene.background as THREE.Color).copy(materials.tokens.plate); requestRender() }
+  const onTheme = (): void => { materials.refresh(); interaction.refreshTheme(); applyLighting(); requestRender() }
   const mo = new MutationObserver(onTheme)
   mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
   const scheme = matchMedia('(prefers-color-scheme: dark)')
@@ -252,6 +267,12 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
       lastFrame = now
       const sig = signature()
       if (sig !== lastSig) { lastSig = sig; pushState() }
+      if (darkness !== roomTarget()) {
+        const t = roomTarget()
+        darkness = ctx.reducedMotion() ? t : Math.abs(t - darkness) < 0.02 ? t : darkness + Math.sign(t - darkness) * Math.min(Math.abs(t - darkness), dt / 0.3)
+        applyLighting()
+        pushState() // beams, glow and the dial follow the room darkness
+      }
       for (const m of models) m.tick?.(dt)
       if (anim) {
         const k = Math.min(1, (now - anim.t0) / TRANSITION_MS)

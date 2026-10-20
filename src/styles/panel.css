@@ -84,3 +84,7 @@
 
 .sw-time.is-text { font: var(--text-headline); font-family: var(--font); color: var(--label-2); }
 .seg-range .seg-btn:first-child { padding-inline: var(--space-3); }
+
+/* compact true-voltage readout: replaces the meter card's digital line while that card is collapsed away */
+.digital-compact { display: none; margin-top: var(--space-1); font: var(--text-callout); text-align: left; }
+#app[data-controls='collapsed'] .panel[data-mode='explore'] .digital-compact:has(.digital-val:not(:empty)) { display: block; }

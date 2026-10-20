@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { needleAngleDeg, scaleTicks } from '../src/views/benchkit'
 import {
-  CABLES, DIAL_PIVOT_PX, KNOB_RANGES, METER_TERMINALS, SOCKETS, dialTickLayout, knobAngleDeg, needleTargetDeg, needleTargetFraction,
+  AMP, CABLES, CABLE_SUPPORTS, CAP_BLOCK, DIAL_PIVOT_PX, KEY_BLOCK, SUPPLY_BOX, KNOB_RANGES, METER_TERMINALS, SOCKETS, dialTickLayout, knobAngleDeg, needleTargetDeg, needleTargetFraction,
 } from '../src/views/bench3d/electrics/layout'
 import { easeTo, stepNeedle } from '../src/views/bench3d/electrics/dynamics'
 import { cableCurve } from '../src/views/bench3d/electrics/cableCurve'
@@ -90,6 +90,49 @@ describe('cables', () => {
     expect(ends('red')[1]).toEqual([...METER_TERMINALS.red].map((v) => expect.closeTo(v, 9)))
     expect(ends('blue')[1]).toEqual([...METER_TERMINALS.black].map((v) => expect.closeTo(v, 9)))
   })
+  it('every end sits in a known socket (or the moulded cord exit of the supply)', () => {
+    const known = Object.values(SOCKETS)
+    for (const c of CABLES) {
+      expect(c.ends.filter((e) => e === 'none').length).toBe(c.id === 'supply' ? 1 : 0)
+      for (const p of [c.points[0]!, c.points[c.points.length - 1]!])
+        expect(known.some((k) => k.every((v, i) => Math.abs(v - p[i]!) < 1e-9))).toBe(true)
+    }
+  })
+  it('lie on the table, on a support, or hang down from a plug: no span floats in mid air', () => {
+    for (const c of CABLES) {
+      const cv = curve(c.points, c.radius)
+      const N = 400
+      const pts = Array.from({ length: N + 1 }, (_, i) => cv.getPoint(i / N))
+      const len = cv.getLength()
+      const e0 = pts[0]!, e1 = pts[N]!
+      pts.forEach((p, i) => {
+        const s = (i / N) * len
+        if (s < 4 || len - s < 4) return
+        const onTable = p.y <= c.radius + 0.2
+        const onSupport = CABLE_SUPPORTS.some((b) => p.x >= b.x0 && p.x <= b.x1 && p.z >= b.z0 && p.z <= b.z1 && Math.abs(p.y - b.top - c.radius) < 0.3)
+        const near = (e: THREE.Vector3): boolean => Math.hypot(p.x - e.x, p.z - e.z) <= 4.5 && p.y <= e.y + 0.3
+        expect(onTable || onSupport || near(e0) || near(e1), `${c.id} floats at s=${s.toFixed(1)} (${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)})`).toBe(true)
+      })
+    }
+  })
+  it('a hanging lead never rises above its plugs', () => {
+    const c = CABLES.find((x) => x.id === 'bridge')!
+    const cv = curve(c.points, c.radius)
+    for (let i = 0; i <= 200; i++) expect(cv.getPoint(i / 200).y).toBeLessThanOrEqual(6.5 + 0.05)
+  })
+})
+describe('amplifier surroundings', () => {
+  const gap = (a: { x: number; z: number; w: number; d: number }, b: { x: number; z: number; w: number; d: number }): number =>
+    Math.max(Math.abs(a.x - b.x) - (a.w + b.w) / 2, Math.abs(a.z - b.z) - (a.d + b.d) / 2)
+  it('keeps capacitor, key and supply at least 5 cm from the amplifier and from each other', () => {
+    const amp = { x: AMP.x, z: AMP.z, w: AMP.w, d: AMP.d }
+    const items = [CAP_BLOCK, KEY_BLOCK, SUPPLY_BOX]
+    for (const it of items) expect(gap(it, amp)).toBeGreaterThanOrEqual(5)
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) expect(gap(items[i]!, items[j]!)).toBeGreaterThanOrEqual(5)
+  })
+})
+describe('cables (levels)', () => {
+  const curve = (pts: readonly (readonly number[])[], radius = 0.2) => cableCurve(THREE, { points: pts as never, radius })
   it('stay above the table and never sink below a cable radius', () => {
     for (const c of CABLES) {
       const cv = curve(c.points, c.radius)

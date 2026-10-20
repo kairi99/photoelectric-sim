@@ -156,6 +156,12 @@ export const mountPanel: MountView = (root, ctx): View => {
   const swTime = htmlEl('p', { class: 'sw-time', role: 'timer', 'aria-live': 'off' }, sw)
   const swSettled = htmlEl('p', { class: 'sw-settled' }, sw)
   relabelers.push(() => { swHead.textContent = S().stopwatch })
+  // Compact true-voltage readout, shown only while the controls are collapsed in 3D (the meter card holds it otherwise).
+  const swDigital = htmlEl('p', { class: 'digital digital-compact only-explore' }, sw)
+  const swDigitalLbl = htmlEl('span', { class: 'digital-lbl' }, swDigital)
+  const swDigitalVal = htmlEl('span', { class: 'digital-val' }, swDigital)
+  const setSwDigitalLbl = textSetter(swDigitalLbl)
+  const setSwDigitalVal = textSetter(swDigitalVal)
   const setSwTime = textSetter(swTime)
   const setSwText = classSetter(swTime, 'is-text')
   const setSwSettled = textSetter(swSettled)
@@ -213,6 +219,8 @@ export const mountPanel: MountView = (root, ctx): View => {
     } else if (liveText !== '') { liveText = ''; live.textContent = '' }
     if (r.mode === 'explore' && r.needleValue_V !== null) { setDigitalLbl(`${s.digital}: `); setDigitalVal(`${fmtNum(r.needleValue_V, 3, ctx.lang())} V`) }
     else { setDigitalLbl(''); setDigitalVal('') }
+    if (r.mode === 'explore' && r.needleValue_V !== null) { setSwDigitalLbl(`${s.digital}: `); setSwDigitalVal(`${fmtNum(r.needleValue_V, 3, ctx.lang())} V`) }
+    else { setSwDigitalLbl(''); setSwDigitalVal('') }
     RANGES.forEach((rg, i) => {
       const on = rg === r.meterRange
       rangeFlags[i]!.chk(String(on))

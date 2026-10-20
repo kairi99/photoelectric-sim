@@ -128,6 +128,7 @@ function boot(root: HTMLElement): void {
   const benchRoot = mk('bench', colL, false)
   const chartsRoot = mk('charts', colL, true)
   const panelRoot = mk('panel', colR, false)
+  panelRoot.id = 'panel-region'
   const tableRoot = mk('table', colR, true)
 
   // ---- Learn drawer (content is mounted by the pedagogy phase into .learn-body) ----

@@ -113,3 +113,15 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---- 3D bench with collapsed controls: the 2D controls that duplicate the scene are hidden (not unmounted) ---- */
+#app[data-controls='collapsed'] .bench-controls,
+#app[data-controls='collapsed'] .bench-inset,
+#app[data-controls='collapsed'] .panel [data-ctl='range'],
+#app[data-controls='collapsed'] .panel [data-ctl='key'],
+#app[data-controls='collapsed'] .panel .card-amp { display: none; }
+.bench-controls-hint { margin: 0; font: var(--text-footnote); color: var(--label-2); text-align: center; }
+.bench-ctl-toggle { display: inline-flex; gap: var(--space-2); align-items: center; }
+.bench-head .bench-ctl-toggle { margin-left: auto; }
+.bench-head .bench-ctl-toggle + .seg-group { margin-left: 0; }
+.bench-ctl-toggle[hidden] + .seg-group { margin-left: auto; }

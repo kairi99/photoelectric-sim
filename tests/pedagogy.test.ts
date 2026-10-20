@@ -297,6 +297,13 @@ describe('procedure checklist', () => {
     a.load({ roomLights: false })
     expect(done(a)).toContain('cover')
   })
+  it('the cover step is always ticked in explore, where room light is only visual', () => {
+    const a = new Apparatus({ mode: 'explore' })
+    expect(a.roomLights).toBe(true)
+    expect(done(a)).toContain('cover')
+    a.setRoomLights(true)
+    expect(done(a)).toContain('cover')
+  })
   it('ticks lines and fit after four lines', () => {
     const a = new Apparatus({ mode: 'lab' })
     warmUp(a)

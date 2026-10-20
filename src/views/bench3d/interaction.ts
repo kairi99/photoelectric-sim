@@ -415,6 +415,10 @@ export function createInteraction(d: InteractionDeps): Interaction {
         const r = canvas.getBoundingClientRect()
         return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height }
       },
+      /** Debug camera placement (cm). */
+      setCamera(pos: [number, number, number], target: [number, number, number]): void {
+        controls.target.set(...target); camera.position.set(...pos); camera.lookAt(controls.target); controls.update(); d.requestRender()
+      },
       /** Client coordinates of the arm knob when the arm is at position t (for scripted drags). */
       armKnobAt(t: number): { x: number; z: number; screen: { x: number; y: number } } {
         const w = windowPoint(t)

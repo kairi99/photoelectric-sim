@@ -259,7 +259,7 @@ export class Apparatus {
     this.cathode = 'photocell'
     this.stray_fraction = null
     this.dirty = false
-    this.roomLights = false
+    this.roomLights = this.mode === 'explore'
     this.clock_s = 0
     this.releaseTime_s = 0
     this.U_V = 0
@@ -378,9 +378,8 @@ export class Apparatus {
     if (o.dirty !== undefined) this.dirty = o.dirty
     this.changed()
   }
-  /** Lab-only realism toggle: room not dark. */
+  /** Room lit or dark. Lab: adds stray light (see ambientWeight). Explore: purely visual, the ideal instrument ignores it. */
   setRoomLights(on: boolean): void {
-    if (this.mode !== 'lab') return
     this.roomLights = on
     this.changed()
   }

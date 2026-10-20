@@ -82,10 +82,21 @@ export const PLATE = {
   outBlue: { u: 4.9, v: 0.4 },
   offset: { u: 2.9, v: -3.3 },
   led: { u: -4.9, v: 4.9 },
+  /** 4 mm sockets across the electrometer input: the 100 pF capacitor and the key plug in here (leaflet Fig. 2). */
+  capIn: { u: -2.75, v: 4.3 },
+  keyIn: { u: -2.75, v: 2.1 },
 } as const
 const plateWorld = (p: { u: number; v: number }): V3 => [AMP.x + p.u, AMP.h / 2 + p.v, AMP_FRONT_Z + SOCKET_FRONT]
 /** Right side socket for the earth lead to the distribution box. */
 export const AMP_EARTH_SIDE: V3 = [AMP.x + AMP.w / 2 + SOCKET_FRONT, 3, AMP.z + 0.2]
+
+// ---- plug-in blocks in front of the amplifier (clear gaps of at least 5 cm to the amplifier and to each other) -------
+export interface Footprint { x: number; z: number; w: number; d: number }
+export const CAP_BLOCK: Footprint = { x: 14, z: 17, w: 3.4, d: 2.6 }
+export const KEY_BLOCK: Footprint = { x: 23.5, z: 19, w: 4, d: 3.2 }
+export const SUPPLY_BOX: Footprint = { x: 28, z: 28, w: 5, d: 4 }
+/** Height of the contact socket on the back (amplifier-side) face of the capacitor and key blocks. */
+export const BLOCK_SOCKET_Y = 0.5
 
 // ---- sockets elsewhere (given by the bench layout) ------------------------------------------------------
 export const SOCKETS = {
@@ -103,11 +114,13 @@ export const SOCKETS = {
   ampEarth: AMP_EARTH_SIDE,
   meterBlack: METER_TERMINALS.black,
   meterRed: METER_TERMINALS.red,
-  /** Plug-in capacitor 578 22 and key 579 10 blocks (top contact) and the side of the amplifier input where their leads end. */
-  capTop: [16.5, 1.35, 5],
-  keyTop: [20, 0.95, 12],
-  ampInSide: [21.55, 9.2, 8.55],
-  supplyBox: [24.5, 2.4, 12],
+  /** Back-face contacts of the capacitor 578 22 and key 579 10 blocks (the faces turned to the amplifier) and their amplifier input sockets. */
+  capBlock: [CAP_BLOCK.x, BLOCK_SOCKET_Y, CAP_BLOCK.z - CAP_BLOCK.d / 2 - SOCKET_FRONT],
+  keyBlock: [KEY_BLOCK.x, BLOCK_SOCKET_Y, KEY_BLOCK.z - KEY_BLOCK.d / 2 - SOCKET_FRONT],
+  ampCapIn: plateWorld(PLATE.capIn),
+  ampKeyIn: plateWorld(PLATE.keyIn),
+  /** Where the fixed cord leaves the back of the plug-in supply (no socket: the cord is moulded in). */
+  supplyBox: [SUPPLY_BOX.x, 1.4, SUPPLY_BOX.z - SUPPLY_BOX.d / 2],
   distBox: [44.5, 1.5, -9 + 0.3],
 } as const satisfies Record<string, V3>
 
@@ -130,38 +143,41 @@ export const CABLES: CableDef[] = [
   },
   { // 100 cm lead: ring anode 8.2 -> amplifier ground
     id: 'anode', mat: 'black', radius: r, ends: ['4mm', '4mm'],
-    points: [SOCKETS.s82b, [15.0, 4.2, -3.0], [16.4, r, -4.6], [18.2, r, -3], [18.25, r, 3], [18.3, r, 8.5], [19.0, r, 10.1], [21.3, 0.5, 10.0], [21.3, 1.6, 9.0], SOCKETS.ampGround],
+    points: [SOCKETS.s82b, [14.6, 5.0, -2.0], [15.8, 1.5, -1.2], [16.6, r, 0], [18.2, r, 2], [18.25, r, 3], [18.3, r, 8.5], [19.0, r, 10.1], [21.3, 0.5, 10.0], [21.3, 1.6, 9.0], SOCKETS.ampGround],
   },
-  { // 25 cm lead between the two 4 mm sockets of 8.2 (a slack loop standing up from the end wall)
+  { // 25 cm lead between the two 4 mm sockets of 8.2: hangs from both plugs, lies in a small loop on the table behind the tube
     id: 'bridge', mat: 'red', radius: 0.17, ends: ['4mm', '4mm'],
-    points: [SOCKETS.s82, [15.2, 7.0, -5.0], [18.0, 10.2, -5.0], [19.4, 12.4, -3.5], [18.0, 10.2, -2.0], [15.2, 7.0, -1.9], SOCKETS.s82b],
+    points: [SOCKETS.s82, [14.8, 5.2, -5.0], [15.8, 1.6, -5.9], [16.8, 0.17, -6.8], [19.5, 0.17, -8.2], [22, 0.17, -6.2], [19.5, 0.17, -4.4], [16.4, 0.17, -3.5], [14.9, 3.2, -2.9], SOCKETS.s82b],
   },
-  { // capacitor block -> amplifier input
-    id: 'capLead', mat: 'black', radius: 0.14, ends: ['4mm', 'none'],
-    points: [SOCKETS.capTop, [17.2, 3.4, 6.2], [19.6, 6.4, 8.0], SOCKETS.ampInSide],
+  { // capacitor block -> amplifier input (+): hangs from the upper input socket, lies on the table, enters the block's back face
+    id: 'capLead', mat: 'black', radius: 0.14, ends: ['4mm', '4mm'],
+    points: [SOCKETS.ampCapIn, [22.3, 10.3, 9.9], [22.2, 6.0, 10.7], [22.2, 0.14, 11.0], [19, 0.14, 12.4], [15.5, 0.14, 13.0], [14.1, 0.14, 14.0], SOCKETS.capBlock],
   },
-  { // key block -> amplifier input
-    id: 'keyLead', mat: 'black', radius: 0.14, ends: ['4mm', 'none'],
-    points: [SOCKETS.keyTop, [20.6, 3.8, 11.0], [21.6, 7.0, 9.6], SOCKETS.ampInSide],
+  { // key block -> amplifier input (+): hangs from the lower input socket and runs straight to the key block
+    id: 'keyLead', mat: 'black', radius: 0.14, ends: ['4mm', '4mm'],
+    points: [SOCKETS.ampKeyIn, [22.8, 8.1, 9.5], [23.4, 4.5, 10.0], [23.45, 0.14, 11.2], [23.5, 0.14, 14.0], [23.5, 0.14, 15.3], SOCKETS.keyBlock],
   },
   { // red: amplifier output -> multimeter
     id: 'red', mat: 'red', radius: r, ends: ['4mm', '4mm'],
-    points: [SOCKETS.ampOutRed, [30.4, 8.0, 9.4], [30.9, 5, 11], [31.3, r, 14], [31.3, r, 21.0], [36, r, 23.0], [43.0, 0.35, 22.4], [43.0, 1.0, 20.4], SOCKETS.meterRed],
+    points: [SOCKETS.ampOutRed, [30.5, 7.0, 9.6], [30.8, 3.4, 10.3], [31.1, r, 11.4], [31.3, r, 14], [31.3, r, 21.0], [36, r, 23.0], [43.0, 0.35, 22.4], [43.0, 1.0, 20.4], SOCKETS.meterRed],
   },
   { // blue: amplifier common -> multimeter
     id: 'blue', mat: 'blue', radius: r, ends: ['4mm', '4mm'],
-    points: [SOCKETS.ampOutBlue, [30.45, 6.4, 9.5], [31.2, 4, 11.4], [31.9, r, 14.2], [31.9, r, 20.3], [36.5, r, 21.6], [41.4, 0.35, 21.4], [41.4, 1.0, 20.4], SOCKETS.meterBlack],
+    points: [SOCKETS.ampOutBlue, [30.6, 5.4, 9.7], [31.0, 2.6, 10.6], [31.6, r, 12.0], [31.9, r, 14.2], [31.9, r, 20.3], [36.5, r, 21.6], [41.4, 0.35, 21.4], [41.4, 1.0, 20.4], SOCKETS.meterBlack],
   },
   { // yellow-green earth lead: amplifier -> distribution box 502 04
     id: 'earth', mat: 'yellowGreen', radius: r, ends: ['4mm', '4mm'],
     points: [SOCKETS.ampEarth, [33.6, 1.0, 1.8], [34.5, r, -1], [37, r, -6], [41, r, -6.5], [44.5, 0.6, -7.2], SOCKETS.distBox],
   },
-  { // supply 562 791 -> amplifier 12 V~ jack
+  { // supply 562 791 -> amplifier 12 V~ jack: the cord leaves the back of the supply and lies on the table
     id: 'supply', mat: 'black', radius: 0.18, ends: ['none', '4mm'],
-    points: [SOCKETS.supplyBox, [23.4, r, 11.0], [23.6, r, 9.6], [24.3, 1.0, 8.9], SOCKETS.ampSupply],
+    points: [SOCKETS.supplyBox, [28, 0.18, 23.2], [27.9, 0.18, 18], [27.0, 0.18, 13.5], [25.3, 0.8, 10.4], [24.3, 1.4, 9.2], SOCKETS.ampSupply],
   },
   { // lamp 1 -> universal choke 451 30
     id: 'lamp', mat: 'black', radius: 0.24, ends: ['4mm', '4mm'],
     points: [SOCKETS.lamp, [-30.4, 1.2, 0.0], [-29.6, r, 3.5], [-30.0, r, 9.0], [-33.4, 1.2, 9.8], [-33.4, 4.2, 8.8], SOCKETS.chokeOut],
   },
 ]
+
+/** Boxes a cable may drape over (x0, x1, y top, z0, z1). None at present: every lead lies on the table or hangs between plugs. */
+export const CABLE_SUPPORTS: ReadonlyArray<{ x0: number; x1: number; z0: number; z1: number; top: number }> = []

@@ -33,6 +33,11 @@ interface BenchStrings {
   stray: string
   dirty: string
   roomLights: string
+  roomLightsHelpLab: string
+  roomLightsHelpExplore: string
+  controlsShow: string
+  controlsHide: string
+  controlsHint: string
   photonEnergy: string
   eV: string
   lampGlow: string
@@ -81,6 +86,11 @@ const en: BenchStrings = {
   stray: 'Stray light',
   dirty: 'Dirty photocell',
   roomLights: 'Room lights on',
+  roomLightsHelpLab: 'Room light reaching the open window adds stray light; cover the window (12) or turn them off.',
+  roomLightsHelpExplore: 'Only changes the view: the ideal instrument ignores room light.',
+  controlsShow: 'Show controls',
+  controlsHide: 'Hide controls',
+  controlsHint: 'Operate the bench in the 3D view, or open the full controls.',
   photonEnergy: 'Photon energy hν',
   eV: 'eV',
   lampGlow: 'Lamp glow',
@@ -129,6 +139,11 @@ const es: BenchStrings = {
   stray: 'Luz parásita',
   dirty: 'Fotocélula sucia',
   roomLights: 'Luces de la sala encendidas',
+  roomLightsHelpLab: 'La luz de la sala que llega a la ventana abierta añade luz parásita; tapa la ventana (12) o apágalas.',
+  roomLightsHelpExplore: 'Solo cambia la vista: el instrumento ideal ignora la luz de la sala.',
+  controlsShow: 'Mostrar controles',
+  controlsHide: 'Ocultar controles',
+  controlsHint: 'Maneja el banco en la vista 3D, o abre los controles completos.',
   photonEnergy: 'Energía del fotón hν',
   eV: 'eV',
   lampGlow: 'Brillo de la lámpara',

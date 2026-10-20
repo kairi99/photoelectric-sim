@@ -12,6 +12,8 @@ export interface Bench3DOptions {
   onFail?(reason: string): void
   /** Initial camera preset (default: ?cam= if valid, else 'overview'). */
   preset?: PresetName
+  /** Opens the (collapsible) 2D control panels; called before the part card scrolls to a control. */
+  revealControls?(): void
 }
 export type Bench3DView = View & { setVisible(visible: boolean): void; setPreset(name: PresetName): void }
 
@@ -57,6 +59,18 @@ export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DO
   })
   stage.append(presets)
 
+  // room-lights toggle (top-right corner): a light bulb, mirrors apparatus.roomLights
+  const lightBtn = document.createElement('button')
+  lightBtn.type = 'button'
+  lightBtn.className = 'bench3d-lights'
+  lightBtn.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>'
+  const syncLights = (): void => {
+    const on = ctx.apparatus.roomLights
+    if (lightBtn.getAttribute('aria-pressed') !== String(on)) lightBtn.setAttribute('aria-pressed', String(on))
+  }
+  lightBtn.addEventListener('click', () => { ctx.apparatus.setRoomLights(!ctx.apparatus.roomLights); syncLights() })
+  stage.append(lightBtn)
+
   const card = document.createElement('div')
   card.className = 'bench3d-card'
   card.hidden = true
@@ -101,6 +115,7 @@ export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DO
   }
   const ctrlOf: Partial<Record<PartId, string>> = { '1': 'lamp', '2': 'beam', '9': 'arm', '11': 'cathode', '12': 'windowCover', key: 'key', meter: 'range', meterKnob: 'range' }
   cardGo.addEventListener('click', () => {
+    opts.revealControls?.()
     const target = cardControl && document.querySelector<HTMLElement>(`[data-ctl="${cardControl}"]`)
     if (!target) return
     target.scrollIntoView({ block: 'nearest', behavior: ctx.reducedMotion() ? 'auto' : 'smooth' })
@@ -114,6 +129,8 @@ export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DO
     stage.setAttribute('aria-label', s.figure)
     status.textContent = scene || destroyed ? '' : s.loading
     presets.setAttribute('aria-label', s.presetsLabel)
+    lightBtn.setAttribute('aria-label', s.roomLights)
+    lightBtn.title = s.roomLights
     presetBtns.forEach((b, i) => { b.textContent = s.presets[PRESET_ORDER[i]!] })
     cardGo.textContent = s.goToControl
     cardClose.textContent = s.close
@@ -123,6 +140,7 @@ export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DO
   }
   relabel()
   syncPresets()
+  syncLights()
 
   import('./scene.ts').then(({ createBenchScene }) => {
     if (destroyed) return
@@ -142,7 +160,7 @@ export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DO
   }).catch((err) => { if (!destroyed) opts.onFail?.(String(err)) })
 
   return {
-    update() { scene?.update() },
+    update() { syncLights(); scene?.update() },
     relabel,
     focus(list) { pendingFocus = list; scene?.focus(list) },
     setVisible(v) { wrap.hidden = !v; scene?.setVisible(v) },
