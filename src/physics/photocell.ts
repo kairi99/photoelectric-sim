@@ -2,7 +2,7 @@ import { C_ms, CATHODES, E_C, H_Js, HG_LINES, W_A_eV as W_A_DEFAULT_eV, getLine 
 import type { CathodeId, HgLineId } from './constants.ts'
 
 /** Saturation photocurrent of a unit-power, full-QE line (A). Empirical, see PARAMETERS.md. */
-export const I_REF_A = 8e-11
+export const I_REF_A = 1e-10
 /** Photon energy above threshold over which the quantum-yield factor ramps from 0 to 1 (eV). Empirical. */
 export const QE_RAMP_eV = 1.0
 

@@ -20,7 +20,7 @@ export const IDEAL: Scenario = {
 
 export const LAB: Scenario = {
   name: 'lab',
-  params: { stray_fraction: 0.005, R_cell_Ohm: 1e14 },
+  params: { stray_fraction: 0.002, R_cell_Ohm: 4e12 },
   wait_s: 60,
 }
 

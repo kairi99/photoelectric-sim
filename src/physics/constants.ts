@@ -44,7 +44,7 @@ export const CATHODES: Readonly<Record<CathodeId, Cathode>> = {
  * Effective work function of the ring anode in eV. U0 follows the ANODE barrier: current is zero when
  * h*nu = W_A + e*U0 (leaflet eq. VII). The ring is K-contaminated (evaporated cathode material), hence far below Pt.
  */
-export const W_A_eV = 1.555
+export const W_A_eV = 1.52
 
 /** Look up a line by id (throws for unknown ids). */
 export function getLine(id: HgLineId): HgLine {

@@ -111,12 +111,31 @@ describe('charging dynamics', () => {
   })
 })
 
-describe('lab calibration (leaflet Table 1)', () => {
-  it('60 s readings are within 0.06 V of Table 1 and fitted h lies in 5.7-6.4e-34', () => {
-    const d = measureVisible(LAB)
-    visible.forEach((id, k) => expect(Math.abs(d.U_V[k]! - TABLE1[id]!)).toBeLessThan(0.06))
-    const h = planckFromFit(linearFit(d.nu_Hz, d.U_V).slope)
+describe('lab calibration (leaflet Table 1, steady state)', () => {
+  const at = (id: HgLineId, t: number) => {
+    const c = chargeCurve({ ...LAB.params, line: id }, t, Math.round(t))
+    return c.U_V[c.U_V.length - 1]!
+  }
+  it('LAB plateaus: the meter stops moving between 60 s and 600 s', () => {
+    for (const id of visible) {
+      expect(Math.abs(at(id, 120) - at(id, 60))).toBeLessThan(0.01)
+      expect(Math.abs(at(id, 600) - at(id, 60))).toBeLessThan(0.02)
+    }
+  })
+  it('LAB steady states are within 0.05 V of Table 1 and give h in 5.7-6.4e-34', () => {
+    const U = visible.map((id) => steadyState_V({ ...LAB.params, line: id }))
+    visible.forEach((id, k) => expect(Math.abs(U[k]! - TABLE1[id]!)).toBeLessThan(0.05))
+    const h = planckFromFit(linearFit(visible.map(nuOf), U).slope)
     expect(h).toBeGreaterThan(5.7e-34)
     expect(h).toBeLessThan(6.4e-34)
+  })
+  it('the 60 s reading is within 20 mV of the steady state (leaflet: wait 30 s to 1 min)', () => {
+    for (const id of visible)
+      expect(Math.abs(at(id, 60) - steadyState_V({ ...LAB.params, line: id }))).toBeLessThan(0.02)
+  })
+  it('in LAB, dimming slightly changes the plateau (leakage balance depends on I_sat)', () => {
+    const a = steadyState_V({ ...LAB.params, line: 'violet' })
+    const b = steadyState_V({ ...LAB.params, line: 'violet', dimming: 0.25 })
+    expect(b).toBeLessThan(a)
   })
 })
