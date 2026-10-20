@@ -89,7 +89,6 @@ button { font: inherit; color: inherit; }
 .learn-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0 var(--space-4); }
 .learn-head h2 { margin: 0; }
 .learn-body { padding: var(--space-3) var(--space-4) var(--space-5); overflow-y: auto; overscroll-behavior: contain; }
-.learn-empty { margin: 0; color: var(--label-2); font: var(--text-footnote); }
 .scrim {
   position: fixed; inset: 0; z-index: var(--z-overlay); background: rgba(0, 0, 0, 0.35); opacity: 0; visibility: hidden;
   transition: opacity var(--dur-base) var(--ease-out), visibility 0s linear var(--dur-base);

@@ -2,7 +2,7 @@
 import '../styles/bench.css'
 import { HG_LINES, nuFromLambda, photonEnergy_eV } from '../physics/index.ts'
 import type { CathodeId, HgLineId } from '../physics/index.ts'
-import { LINE_SIGMA } from '../apparatus/index.ts'
+import { LINE_SIGMA, STRAY_PRESET_FRACTION } from '../apparatus/index.ts'
 import type { Mode } from '../apparatus/index.ts'
 import type { MountView, View } from './view.ts'
 import { strings } from './strings/bench.ts'
@@ -20,7 +20,7 @@ const MIRROR = { x: 290, y: 70 }
 const PRISM_EXIT = { x: 214, y: 70 }
 const INSET = { x0: 20, w: 320 }
 /** UI preset for the explore stray-light toggle (fraction of the line power scattered onto the cell). */
-const STRAY_PRESET = 0.02
+const STRAY_PRESET = STRAY_PRESET_FRACTION
 const LINE_IDS = HG_LINES.map((l) => l.id)
 const lineVar = (id: HgLineId): string => `var(--stage-${id})`
 const CATHODE_IDS: CathodeId[] = ['photocell', 'Cs', 'Na', 'K', 'Zn']

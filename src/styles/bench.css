@@ -106,3 +106,6 @@
   .bench-arm, .switch-track, .switch-knob, .ctl { transition: none; }
   .bench-info { animation: none; }
 }
+
+/* Guided tasks hide the photon-energy overlay until the act step is done. */
+:root[data-hide-answers] .bench-photon { display: none; }

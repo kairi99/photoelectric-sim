@@ -36,6 +36,8 @@ export const SETTLE_RATE_VperS = 1e-3
 export const SETTLE_TIME_s = 5
 export const LINE_SIGMA = 0.025 // line image width on the arm scale (1 sigma, arm fraction)
 export const ALIGNED_OVERLAP = 0.9
+/** Stray-light fraction the "stray light" switch applies (explore). */
+export const STRAY_PRESET_FRACTION = 0.02
 const NOISE = { explore: { sigma_V: 0.0005, offset_V: 0 }, lab: { sigma_V: 0.003, offset_V: 0.002 } } as const
 const AMBIENT_REL = 0.01 // room-light contribution relative to a fully open window
 const WAITED_s = 30
@@ -71,6 +73,12 @@ export interface Measurement {
   U0_V: number
   t_wait_s: number
   settled: boolean
+  /** Dimming slider when recorded (0..1). */
+  dimming: number
+  /** Explore override "dirty photocell" active when recorded. */
+  dirty: boolean
+  /** Explore override "stray light" active when recorded. */
+  stray: boolean
 }
 export type RecordResult = { ok: true; measurement: Measurement } | { ok: false; error: 'invalid-value' | 'value-required' | 'meter-off' }
 
@@ -597,6 +605,9 @@ export class Apparatus {
       U0_V: v,
       t_wait_s: this.clock_s - this.releaseTime_s,
       settled: this.settledNow,
+      dimming: this.dimming,
+      dirty: this.mode === 'explore' && this.dirty,
+      stray: this.mode === 'explore' && (this.stray_fraction ?? 0) > 0,
     }
     this.measurements.push(m)
     this.log('recorded', v)

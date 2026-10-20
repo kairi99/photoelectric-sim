@@ -242,3 +242,20 @@ describe('measurement and mode events', () => {
     expect(a.measurements).toHaveLength(0)
   })
 })
+
+describe('measurement context fields', () => {
+  it('records dimming, dirty and stray flags at record time', () => {
+    const a = new Apparatus({ mode: 'explore' })
+    a.setLamp(true)
+    a.setArm(a.linePosition('green'))
+    a.setDimming(0.3)
+    a.setOverrides({ dirty: true, stray_fraction: 0.02 })
+    a.record()
+    a.setDimming(1)
+    a.setOverrides({ dirty: false, stray_fraction: null })
+    a.record()
+    const [m1, m2] = a.measurements
+    expect(m1).toMatchObject({ dimming: 0.3, dirty: true, stray: true })
+    expect(m2).toMatchObject({ dimming: 1, dirty: false, stray: false })
+  })
+})

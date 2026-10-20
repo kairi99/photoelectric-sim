@@ -16,7 +16,8 @@
   --stroke-hair: 1px;
   --touch: 44px;
   --dur-fast: 150ms; --dur-base: 250ms; --dur-slow: 350ms;
-  --z-overlay: 1; --z-sheet: 2;
+  --z-overlay: 1; --z-sheet: 2; --z-dock: 2; --z-tour: 3;
+  --scrim-tour: rgba(0, 0, 0, 0.6);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.04);

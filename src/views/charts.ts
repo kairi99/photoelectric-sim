@@ -9,6 +9,9 @@ import type { MountView, View } from './view.ts'
 import { strings } from './strings/charts.ts'
 import '../styles/charts.css'
 
+/** A guided task sets <html data-hide-answers> while the student predicts and acts: the ideal overlays would give the answer away. */
+const answersHidden = (): boolean => document.documentElement.hasAttribute('data-hide-answers')
+
 const THROTTLE_ms = 100
 const NU_MIN_THz = 450
 const NU_MAX_THz = 850
@@ -379,7 +382,7 @@ export const mountCharts: MountView = (root, ctx): View => {
     const last = hist.length ? hist[hist.length - 1]!.t_s : -1
     const line = ro_.lineOnCell
     const idealU0 =
-      app.mode === 'explore' && line
+      app.mode === 'explore' && !answersHidden() && line
         ? limitVoltage_V(nuFromLambda(HG_LINES.find((l) => l.id === line)!.lambda_nm))
         : null
     const changed = force || hist.length !== histLen || last !== histLastT || line !== alignedLine || idealU0 !== liveIdealU0
@@ -403,9 +406,9 @@ export const mountCharts: MountView = (root, ctx): View => {
   const idealModel = (): { a: number; b: number } => sampleLine((nu) => limitVoltage_V(nu * 1e12), 700, 800)
 
   const refreshFit = (force: boolean): void => {
-    idealLabel.hidden = app.mode !== 'explore'
+    idealLabel.hidden = app.mode !== 'explore' || answersHidden()
     const ms: Measurement[] = app.measurements
-    const sig = `${app.mode}|${showIdeal}|${ctx.lang()}|` + ms.map((m) => `${m.lineId}:${m.U0_V}`).join(';')
+    const sig = `${app.mode}|${showIdeal}|${answersHidden()}|${ctx.lang()}|` + ms.map((m) => `${m.lineId}:${m.U0_V}`).join(';')
     if (!force && sig === fitSig) return
     fitSig = sig
     const s = S()
@@ -419,7 +422,7 @@ export const mountCharts: MountView = (root, ctx): View => {
       const b = f.intercept_V
       fitLine = { a, b, nu0: a > 0 ? -b / a : null }
     }
-    const ideal = app.mode === 'explore' && showIdeal ? idealModel() : null
+    const ideal = app.mode === 'explore' && showIdeal && !answersHidden() ? idealModel() : null
     let xmin = NU_MIN_THz
     for (const nu0 of [fitLine?.nu0, ideal && ideal.a > 0 ? -ideal.b / ideal.a : null]) {
       if (nu0 != null && nu0 > 200 && nu0 < NU_MIN_THz + 20) xmin = Math.min(xmin, Math.floor((nu0 - 20) / 25) * 25)
