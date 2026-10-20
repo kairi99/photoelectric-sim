@@ -79,7 +79,7 @@ export class PartRegistry {
     for (const part of this.parts.values()) {
       part.object.traverse((o) => {
         const mesh = o as THREE.Mesh
-        if (!mesh.isMesh) return
+        if (!mesh.isMesh || mesh.userData.overlay) return // outline overlays (interaction.ts) own their material
         const orig = (mesh.userData.origMaterial ??= mesh.material) as THREE.Material | THREE.Material[]
         const dim = this.active !== null && !this.lit(mesh)
         // A builder may have swapped the material while dimmed: treat anything that is not our clone as the new original.
@@ -92,18 +92,29 @@ export class PartRegistry {
     }
   }
 
-  /** Raycast from normalised device coords (-1..1); returns the id of the nearest registered part, or null. */
-  pick(ndcX: number, ndcY: number, camera: THREE.Camera): PartId | null {
+  /** Ids currently highlighted (empty when nothing is). */
+  activeIds(): PartId[] { return this.active ? [...this.active] : [] }
+
+  /** All meshes hit by a ray from normalised device coords (-1..1), nearest first. Outline overlays are ignored. */
+  hits(ndcX: number, ndcY: number, camera: THREE.Camera): THREE.Intersection[] {
     this.raycaster.setFromCamera({ x: ndcX, y: ndcY } as THREE.Vector2, camera)
-    const hits = this.raycaster.intersectObjects([...this.parts.values()].map((p) => p.object), true)
-    for (const h of hits) {
-      if (!(h.object as THREE.Mesh).isMesh) continue
-      for (let o: THREE.Object3D | null = h.object; o; o = o.parent) {
-        const id = this.byObject.get(o)
-        if (id) return id
-      }
+    return this.raycaster.intersectObjects([...this.parts.values()].map((p) => p.object), true)
+      .filter((h) => (h.object as THREE.Mesh).isMesh && !h.object.userData.overlay)
+  }
+
+  /** The nearest registered part id up the parent chain of an object, or null. */
+  partOf(object: THREE.Object3D): PartId | null {
+    for (let o: THREE.Object3D | null = object; o; o = o.parent) {
+      const id = this.byObject.get(o)
+      if (id) return id
     }
     return null
+  }
+
+  /** Raycast from normalised device coords (-1..1); returns the id of the nearest registered part, or null. */
+  pick(ndcX: number, ndcY: number, camera: THREE.Camera): PartId | null {
+    const h = this.hits(ndcX, ndcY, camera)[0]
+    return h ? this.partOf(h.object) : null
   }
 
   dispose(): void {

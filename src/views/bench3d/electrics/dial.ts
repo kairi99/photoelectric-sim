@@ -1,11 +1,15 @@
 // Canvas drawing for the printed parts of the electrics: multimeter dial face, range-knob plate, amplifier front plate,
 // small labels. Pure 2D-canvas code (takes a context), so the layout stays in layout.ts.
 import type { MeterRange } from '../../../apparatus/index.ts'
+import type { Lang } from '../../../i18n.ts'
 import { DIAL_PIVOT_PX, DIAL_PX, MIRROR_R, KNOB_RANGES, PLATE, PLATE_CM, dialRangeFor, dialTickLayout, knobAngleDeg } from './layout.ts'
 
 type G = CanvasRenderingContext2D
 const INK = '#16181c'
 const SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'
+
+/** Decimal separator of the language on the printed numerals ('0,3' in Spanish). */
+export const decimal = (text: string | number, lang: Lang): string => String(text).replace('.', lang === 'es' ? ',' : '.')
 
 const polar = (angleDeg: number, rad: number, cx: number, cy: number): [number, number] => {
   const t = (angleDeg * Math.PI) / 180
@@ -13,7 +17,7 @@ const polar = (angleDeg: number, rad: number, cx: number, cy: number): [number, 
 }
 
 /** Dial face for a range (OFF shows the 3 V scale dimmed, as the 2D dial does). Same ticks, numerals and unit as the 2D panel. */
-export function drawDial(g: G, range: MeterRange): void {
+export function drawDial(g: G, range: MeterRange, lang: Lang = 'en'): void {
   const { w, h } = DIAL_PX
   const { x: cx, y: cy, r: R } = DIAL_PIVOT_PX
   const off = range === 'OFF'
@@ -43,17 +47,17 @@ export function drawDial(g: G, range: MeterRange): void {
     const [x0, y0] = polar(t.angleDeg, R, cx, cy), [x1, y1] = polar(t.angleDeg, R * t.innerR, cx, cy)
     g.strokeStyle = INK; g.lineWidth = t.major ? 10 : 5
     g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke()
-    if (t.label !== null) { const [lx, ly] = polar(t.angleDeg, R * t.labelR, cx, cy); g.fillText(t.label, lx, ly) }
+    if (t.label !== null) { const [lx, ly] = polar(t.angleDeg, R * t.labelR, cx, cy); g.fillText(decimal(t.label, lang), lx, ly) }
   }
   // unit and range caption (same wording as the 2D dial's unit text)
   g.font = `800 84px ${SANS}`; g.textAlign = 'left'; g.textBaseline = 'alphabetic'
   g.fillText('V DC', 70, h - 70)
-  if (!off) { g.font = `700 60px ${SANS}`; g.textAlign = 'right'; g.fillText(`${range} V`, w - 70, h - 74) }
+  if (!off) { g.font = `700 60px ${SANS}`; g.textAlign = 'right'; g.fillText(`${decimal(range, lang)} V`, w - 70, h - 74) }
   g.globalAlpha = 1
 }
 
 /** Printed strip under the dial with the range labels around the knob. cx/cy are the knob centre in canvas px. */
-export function drawKnobPlate(g: G, w: number, h: number, cx: number, cy: number, pxPerCm: number): void {
+export function drawKnobPlate(g: G, w: number, h: number, cx: number, cy: number, pxPerCm: number, lang: Lang = 'en'): void {
   g.clearRect(0, 0, w, h)
   g.fillStyle = '#25272c'; g.fillRect(0, 0, w, h)
   g.fillStyle = '#f1efe8'; g.strokeStyle = '#f1efe8'; g.textAlign = 'center'; g.textBaseline = 'middle'
@@ -62,7 +66,7 @@ export function drawKnobPlate(g: G, w: number, h: number, cx: number, cy: number
   for (const range of KNOB_RANGES) {
     const a = knobAngleDeg(range)
     const [lx, ly] = polar(a, labelR, cx, cy)
-    g.fillText(range === 'OFF' ? 'OFF' : String(range), lx, ly)
+    g.fillText(range === 'OFF' ? 'OFF' : decimal(range, lang), lx, ly)
     const [t0x, t0y] = polar(a, 1.12 * pxPerCm, cx, cy), [t1x, t1y] = polar(a, 1.3 * pxPerCm, cx, cy)
     g.lineWidth = 3; g.beginPath(); g.moveTo(t0x, t0y); g.lineTo(t1x, t1y); g.stroke()
   }

@@ -93,6 +93,8 @@ export const SOCKETS = {
   chokeOut: [-33.4, 4.2, 7.2 + SOCKET_FRONT],
   s81: [13.3, 3, 0.5],
   s82: [13.3, 6.5, -4.5],
+  /** Second 4 mm socket of 8.2, bridged to the first by a 25 cm lead. */
+  s82b: [13.3, 6.5, -2.4],
   ampBnc: plateWorld(PLATE.bnc),
   ampGround: plateWorld(PLATE.groundA),
   ampSupply: plateWorld(PLATE.supply),
@@ -101,6 +103,10 @@ export const SOCKETS = {
   ampEarth: AMP_EARTH_SIDE,
   meterBlack: METER_TERMINALS.black,
   meterRed: METER_TERMINALS.red,
+  /** Plug-in capacitor 578 22 and key 579 10 blocks (top contact) and the side of the amplifier input where their leads end. */
+  capTop: [16.5, 1.35, 5],
+  keyTop: [20, 0.95, 12],
+  ampInSide: [21.55, 9.2, 8.55],
   supplyBox: [24.5, 2.4, 12],
   distBox: [44.5, 1.5, -9 + 0.3],
 } as const satisfies Record<string, V3>
@@ -124,7 +130,19 @@ export const CABLES: CableDef[] = [
   },
   { // 100 cm lead: ring anode 8.2 -> amplifier ground
     id: 'anode', mat: 'black', radius: r, ends: ['4mm', '4mm'],
-    points: [SOCKETS.s82, [15.0, 3.0, -6.2], [16.6, r, -6.0], [18.2, r, -3], [18.25, r, 3], [18.3, r, 8.5], [19.0, r, 10.1], [21.3, 0.5, 10.0], [21.3, 1.6, 9.0], SOCKETS.ampGround],
+    points: [SOCKETS.s82b, [15.0, 4.2, -3.0], [16.4, r, -4.6], [18.2, r, -3], [18.25, r, 3], [18.3, r, 8.5], [19.0, r, 10.1], [21.3, 0.5, 10.0], [21.3, 1.6, 9.0], SOCKETS.ampGround],
+  },
+  { // 25 cm lead between the two 4 mm sockets of 8.2 (a slack loop standing up from the end wall)
+    id: 'bridge', mat: 'red', radius: 0.17, ends: ['4mm', '4mm'],
+    points: [SOCKETS.s82, [15.2, 7.0, -5.0], [18.0, 10.2, -5.0], [19.4, 12.4, -3.5], [18.0, 10.2, -2.0], [15.2, 7.0, -1.9], SOCKETS.s82b],
+  },
+  { // capacitor block -> amplifier input
+    id: 'capLead', mat: 'black', radius: 0.14, ends: ['4mm', 'none'],
+    points: [SOCKETS.capTop, [17.2, 3.4, 6.2], [19.6, 6.4, 8.0], SOCKETS.ampInSide],
+  },
+  { // key block -> amplifier input
+    id: 'keyLead', mat: 'black', radius: 0.14, ends: ['4mm', 'none'],
+    points: [SOCKETS.keyTop, [20.6, 3.8, 11.0], [21.6, 7.0, 9.6], SOCKETS.ampInSide],
   },
   { // red: amplifier output -> multimeter
     id: 'red', mat: 'red', radius: r, ends: ['4mm', '4mm'],

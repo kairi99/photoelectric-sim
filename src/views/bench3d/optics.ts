@@ -24,6 +24,7 @@ const WIN_Y0 = 1.5, WIN_Y1 = 6.1 // window panel height range on edge A-C
 const XL = { slider: -18.5, lens3: -16.5, slit: -13.2, lens5: -6.6, prism: 0.5, mirror: 9 }
 const LENS_ARM_X = 12.9 // lens 10 along the arm
 const CELL_ARM_X = 18.9 // photocell centre along the arm
+const CATHODE_X = 1.28 // cathode shell on the cell axis (cell frame: shell pole at 0.25 + 1.1); the aligned cone ends on it, not behind it
 
 export const buildOptics: Builder = (ctx) => {
   const { three: T, scene, materials: M, units: U, parts } = ctx
@@ -66,7 +67,10 @@ export const buildOptics: Builder = (ctx) => {
   const lensMat = std({ color: 0xd6ebff, transparent: true, opacity: 0.38, roughness: 0.04, metalness: 0.1, depthWrite: false, envMapIntensity: 1.6 })
   const bulbMat = std({ color: 0xe6f2ff, transparent: true, opacity: 0.2, roughness: 0.04, metalness: 0, depthWrite: false, envMapIntensity: 1.4 })
   const mirrorMat = std({ color: 0xe9eef5, metalness: 1, roughness: 0.04, envMapIntensity: 1.8 })
-  const flintMat = std({ color: 0xcfe0ee, transparent: true, opacity: 0.55, roughness: 0.05, metalness: 0.05, depthWrite: false, envMapIntensity: 1.4 })
+  // the prism: clear glass (a cheap transparent material, no transmission pass, which turned it pale grey) with faint edges
+  const crownMat = std({ color: 0xf2faff, transparent: true, opacity: 0.16, roughness: 0.02, metalness: 0, depthWrite: false, side: T.DoubleSide, envMapIntensity: 2.4 })
+  const flintMat = std({ color: 0xd8ecff, transparent: true, opacity: 0.22, roughness: 0.02, metalness: 0, depthWrite: false, side: T.DoubleSide, envMapIntensity: 2.4 })
+  const edgeMat = keep(new T.LineBasicMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.5, depthWrite: false }))
   const paperMat = std({ color: 0xf2f4f6, transparent: true, opacity: 0.62, roughness: 0.55, metalness: 0, side: T.DoubleSide, depthWrite: false })
   const coverMat = std({ color: 0x151a20, transparent: true, opacity: 0.9, roughness: 0.35, metalness: 0.1 })
   const smokedMat = std({ color: 0x9fb0c0, transparent: true, opacity: 0.16, roughness: 0.1, metalness: 0, depthWrite: false, side: T.DoubleSide })
@@ -186,14 +190,23 @@ export const buildOptics: Builder = (ctx) => {
   cover.position.set(0, WC, -0.5)
   win.add(cover)
   const coverPlate = mesh(new RoundedBoxGeometry(1, WH + 0.6, 0.16, 2, 0.05), coverMat, cover, [0, 0, 0], false)
-  const coverGrip = rbox(0.5, 1.6, 0.5, M.housing, cover, [0, 0, -0.2], 0.12)
+  // the grip is outside `cover` so it stays visible (and grabbable) when the slider is fully open
+  const coverGrip = new T.Group()
+  coverGrip.name = 'cover-grip'
+  coverGrip.position.set(0, WC, -0.5)
+  win.add(coverGrip)
+  rbox(0.7, 2.6, 0.55, M.housing, coverGrip, [0, 0, -0.22], 0.14)
+  rbox(0.14, 1.7, 0.2, M.metal, coverGrip, [0, 0, -0.55], 0.05)
+  const coverHit = mesh(new T.BoxGeometry(2.0, WH + 0.6, 1.4), keep(new T.MeshBasicMaterial({ visible: false })), coverGrip, [0, 0, -0.3], false)
+  coverHit.name = 'cover-hit'
   const setCover = (c: number): void => {
     const w = Math.max(0.001, WW * c)
     coverPlate.scale.x = w
     coverPlate.position.x = -WW / 2 + w / 2
-    coverGrip.position.x = -WW / 2 + w - 0.35
+    coverGrip.position.x = -WW / 2 + w
     cover.visible = c > 0.005
   }
+  for (const o of [coverPlate, coverGrip]) o.traverse((x) => { x.userData.dragHandle = 'cover' })
   parts.registerPart('12', win, { labelKey: 'parts.12.name', infoKey: 'parts.12.info', controlId: 'windowCover' })
 
   // ---------- parts 2 to 7 inside the tube ----------
@@ -233,8 +246,14 @@ export const buildOptics: Builder = (ctx) => {
   { // (6) direct-vision prism: three glued prisms (crown, flint, crown) on a base
     const g = new T.Group(); root.add(g)
     const { crowns, flint } = amiciGeometries(T, PRISM.L, PRISM.W, PRISM.H)
-    mesh(crowns, M.glass, g, [XL.prism, AX, AZ], false)
+    mesh(crowns, crownMat, g, [XL.prism, AX, AZ], false)
     mesh(flint, flintMat, g, [XL.prism, AX, AZ], false)
+    for (const geo of [crowns, flint]) {
+      const edges = keep(new T.EdgesGeometry(geo, 20))
+      const lines = new T.LineSegments(edges, edgeMat)
+      lines.position.set(XL.prism, AX, AZ)
+      g.add(lines)
+    }
     rbox(PRISM.L + 0.8, 0.5, PRISM.W + 0.8, M.metal, g, [XL.prism, AX - PRISM.H / 2 - 0.25, AZ], 0.1)
     rbox(0.5, AX - PRISM.H / 2 - 0.7, 0.6, M.metal, g, [XL.prism, (AX - PRISM.H / 2 - 0.5) / 2 + 0.6, AZ], 0.06)
     parts.registerPart('6', g, { labelKey: 'parts.6.name', infoKey: 'parts.6.info' })
@@ -263,6 +282,8 @@ export const buildOptics: Builder = (ctx) => {
     const g2 = new T.Group(); root.add(g2)
     cyl(0.62, 1.6, M.rubber, g2, [13.3, 6.5, -4.5], 'x', 20)
     cyl(0.3, 0.2, M.metal, g2, [14.15, 6.5, -4.5], 'x', 16)
+    cyl(0.62, 1.6, M.rubber, g2, [13.3, 6.5, -2.4], 'x', 20) // second socket, bridged to the first by the 25 cm lead
+    cyl(0.3, 0.2, M.metal, g2, [14.15, 6.5, -2.4], 'x', 16)
     parts.registerPart('8.2', g2, { labelKey: 'parts.8.2.name', infoKey: 'parts.8.2.info' })
     const g1 = new T.Group(); root.add(g1)
     cyl(0.85, 1.6, M.metal, g1, [13.3, 3, 0.5], 'x', 28)
@@ -328,10 +349,17 @@ export const buildOptics: Builder = (ctx) => {
   // after the prism: one narrowing cone per spectral line, bent at the mirror, ending in its image on the window
   const fan = {} as Record<LineId, { a: ReturnType<typeof coneRig>; b: ReturnType<typeof coneRig> }>
   const lineKey = {} as Record<LineId, string>
+  // The five legs prism -> mirror overlap almost completely, so with additive blending they over-brighten: that leg is drawn
+  // at a fraction of the opacity (FAN_A_GAIN); the narrow legs mirror -> window are separate and keep the full value.
+  const FAN_A_GAIN = 0.32
+  const lineMatA = {} as Record<LineId, THREE.MeshBasicMaterial>
+  const lineMatInnerA = {} as Record<LineId, THREE.MeshBasicMaterial>
   for (const id of LINE_IDS) {
     const ud = { lambda_nm: lambdaOf[id] }
+    lineMatA[id] = additive()
+    lineMatInnerA[id] = additive()
     fan[id] = {
-      a: coneRig([{ f: 1, mat: lineMat[id] }, { f: 0.5, mat: lineMatInner[id] }], ud),
+      a: coneRig([{ f: 1, mat: lineMatA[id] }, { f: 0.5, mat: lineMatInnerA[id] }], ud),
       b: coneRig([{ f: 1, mat: lineMat[id] }, { f: 0.5, mat: lineMatInner[id] }], ud),
     }
     fan[id].a.setVisible(false); fan[id].b.setVisible(false)
@@ -403,9 +431,10 @@ export const buildOptics: Builder = (ctx) => {
   const cellBeam = coneRig([{ f: 1, mat: cellOuter }, { f: 0.5, mat: cellInner }])
   cellBeam.setVisible(false)
 
-  // ---------- labels: small number tags, shown only when the camera is near (optics views) or looking down (top view) ----------
+  // ---------- labels: small number tags, shown in the 'optics' and 'top' presets and while a part is hovered ----------
   const labels: THREE.Sprite[] = []
   const labelMats: THREE.SpriteMaterial[] = []
+  const TAG_OPACITY = 0.8
   const label = (text: string, parent: THREE.Object3D, at: [number, number, number]): void => {
     const c = document.createElement('canvas')
     c.width = 96; c.height = 48
@@ -415,17 +444,13 @@ export const buildOptics: Builder = (ctx) => {
     g.fillText(text, 48, 25)
     const tex = keep(new T.CanvasTexture(c))
     tex.colorSpace = T.SRGBColorSpace
-    const mat = keep(new T.SpriteMaterial({ map: tex, depthTest: false, transparent: true, opacity: 0.8 }))
+    const mat = keep(new T.SpriteMaterial({ map: tex, depthTest: false, transparent: true, opacity: 0 }))
     const s = new T.Sprite(mat)
     s.scale.set(2.6, 1.3, 1)
     s.position.set(...at)
     s.renderOrder = 12
-    s.onBeforeRender = (_r, _s, cam) => {
-      const p = cam.position
-      const d = Math.hypot(p.x + 3, p.y - 3, p.z - 4)
-      const top = (p.y - 3) / d > 0.97
-      mat.opacity = d < 78 || top ? 0.8 : 0
-    }
+    s.visible = false
+    s.raycast = () => {}
     parent.add(s)
     labels.push(s); labelMats.push(mat)
   }
@@ -434,8 +459,22 @@ export const buildOptics: Builder = (ctx) => {
   label('7', root, [XL.mirror, 10.4, AZ]); label('8.2', root, [14.4, 8.2, -4.5]); label('8.1', root, [14.4, 4.7, 0.5])
   label('12', root, [winMid.x - 2.4, 10.4, winMid.z + 1.0])
   label('9', arm, [KNOB_X, 8.4, 0]); label('10', lens10, [0, 6.6, 0]); label('11', cell, [0, 6.6, 0])
+  let tagLevel = 0 // 0..1, eased towards the target so the tags fade in and out
+  const tagTarget = (): number => (ctx.preset() === 'optics' || ctx.preset() === 'top' || ctx.hovering() ? 1 : 0)
+  const fadeTags = (dt: number): void => {
+    const target = tagTarget()
+    if (tagLevel === target) return
+    tagLevel = reduced() ? target : easeToward(tagLevel, target, dt)
+    for (const m of labelMats) m.opacity = TAG_OPACITY * tagLevel
+    for (const l of labels) l.visible = tagLevel > 0.01
+    ctx.requestRender()
+  }
 
   // ---------- state ----------
+  const easeToward = (x: number, target: number, dt: number): number => {
+    const nx = x + (target - x) * (1 - Math.exp(-Math.max(0, dt) / 0.12))
+    return Math.abs(target - nx) < 0.01 ? target : nx
+  }
   const reduced = (): boolean => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false } }
   let armPos = 0.5, armVel = 0, armTarget = 0.5, armInit = false
   let cellDom: LineId | null = null, cellStrength = 0
@@ -445,11 +484,11 @@ export const buildOptics: Builder = (ctx) => {
     knob.rotation.y = knobAngleRad(armPos)
     arm.updateMatrixWorld(true)
     lensW.set(0.4, ARM_Y, 0); lens10.localToWorld(lensW)
-    cathW.set(0.3 + 1.0, ARM_Y, 0); cell.localToWorld(cathW)
+    cathW.set(CATHODE_X, ARM_Y, 0); cell.localToWorld(cathW)
     const on = cellDom !== null && cellStrength > 0.02
     cellBeam.setVisible(on)
     if (on) {
-      cellBeam.set(lensW, cathW, 0.9, 0.35)
+      cellBeam.set(lensW, cathW, 0.9, 0.3)
       cellOuter.color.copy(M.line[cellDom!].color); cellInner.color.copy(M.line[cellDom!].color)
       const o = opacityFromIntensity(cellStrength)
       cellOuter.opacity = 0.22 * o; cellInner.opacity = 0.55 * o
@@ -483,8 +522,10 @@ export const buildOptics: Builder = (ctx) => {
         placeLine(id, l.position)
         const col = M.line[id].color
         spotMat[id].color.copy(col); lineMat[id].color.copy(col); lineMatInner[id].color.copy(col)
+        lineMatA[id].color.copy(col); lineMatInnerA[id].color.copy(col)
         spotMat[id].opacity = o
         lineMat[id].opacity = 0.05 * o; lineMatInner[id].opacity = 0.12 * o
+        lineMatA[id].opacity = 0.05 * o * FAN_A_GAIN; lineMatInnerA[id].opacity = 0.12 * o * FAN_A_GAIN
         if (show) {
           const w = l.overlap * l.intensity
           sum += w
@@ -501,6 +542,7 @@ export const buildOptics: Builder = (ctx) => {
       applyArm()
     },
     tick(dt) {
+      fadeTags(dt)
       if (Math.abs(armPos - armTarget) < 1e-4 && Math.abs(armVel) < 1e-3) {
         if (armPos !== armTarget) { armPos = armTarget; armVel = 0; applyArm() }
         return

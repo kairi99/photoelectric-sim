@@ -12,6 +12,10 @@ import type { ViewContext } from '../view.ts'
 import { BUILDERS, type BuildCtx, type BuiltModel } from './builders.ts'
 import { createMaterials } from './materials.ts'
 import { PartRegistry, type PartId } from './parts.ts'
+import { createInteraction } from './interaction.ts'
+import { fill } from '../benchkit.ts'
+import { strings as benchStrings } from '../strings/bench.ts'
+import { lookup, strings as bench3dStrings } from '../strings/bench3d.ts'
 import { TABLE, units } from './units.ts'
 
 export type PresetName = 'overview' | 'optics' | 'meter' | 'top'
@@ -47,6 +51,8 @@ export interface BenchScene {
   setPreset(name: PresetName): void
   currentPreset(): PresetName | null
   focus(controls: string[] | null): void
+  /** Redraw text on textures and re-read the aria-label after a language change. */
+  relabel(): void
   highlight(ids: PartId[] | null): void
   destroy(): void
 }
@@ -65,7 +71,9 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   const canvas = renderer.domElement
-  canvas.setAttribute('tabindex', '-1')
+  canvas.tabIndex = 0 // focusable: arrow keys orbit; the control strip below operates the same parts
+  canvas.setAttribute('role', 'application')
+  canvas.setAttribute('aria-label', bench3dStrings[ctx.lang()].canvasLabel)
   container.append(canvas)
 
   // ---------- theme probe + materials ----------
@@ -150,6 +158,7 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
     return { target, pos }
   }
   let preset: PresetName | null = null
+  let lastPreset: PresetName | null = opts.initialPreset
   let anim: { t0: number; fromT: THREE.Vector3; toT: THREE.Vector3; fromP: THREE.Vector3; toP: THREE.Vector3 } | null = null
   const applyPose = (pose: { target: THREE.Vector3; pos: THREE.Vector3 }): void => {
     controls.target.copy(pose.target)
@@ -160,16 +169,20 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   }
   const setPreset = (name: PresetName): void => {
     preset = name
+    lastPreset = name
+    requestRender()
     const pose = poseFor(name)
     if (ctx.reducedMotion()) { anim = null; applyPose(pose); return }
     anim = { t0: performance.now(), fromT: controls.target.clone(), toT: pose.target, fromP: camera.position.clone(), toP: pose.pos }
     requestRender()
   }
-  controls.addEventListener('start', () => { anim = null; preset = null }) // the user took over
+  const userTookOver = (): void => { anim = null; preset = null } // the user took over (lastPreset is kept: it drives the number tags)
+  controls.addEventListener('start', userTookOver)
 
   // ---------- parts, builders ----------
   const parts = new PartRegistry(THREE, requestRender)
-  const buildCtx: BuildCtx = { scene, three: THREE, materials, parts, units, requestRender }
+  let hovering = false
+  const buildCtx: BuildCtx = { scene, three: THREE, materials, parts, units, requestRender, lang: ctx.lang, preset: () => lastPreset, hovering: () => hovering }
   const models: BuiltModel[] = BUILDERS.map((b) => b(buildCtx))
   let lastSig = ''
   const signature = (): string => {
@@ -199,24 +212,28 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
   applyPose(poseFor(opts.initialPreset))
   pushState()
 
-  // ---------- picking (tap without dragging) ----------
-  let down: { x: number; y: number; t: number } | null = null
-  const onDown = (e: PointerEvent): void => { down = { x: e.clientX, y: e.clientY, t: performance.now() } }
-  const onUp = (e: PointerEvent): void => {
-    if (!down) return
-    const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y)
-    const quick = performance.now() - down.t < 600
-    down = null
-    if (moved > 6 || !quick) return
-    const r = canvas.getBoundingClientRect()
-    const id = parts.pick(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1, camera)
-    opts.onPick(id)
-  }
-  canvas.addEventListener('pointerdown', onDown)
-  canvas.addEventListener('pointerup', onUp)
+  // ---------- direct manipulation: handles, hover, tooltips, keyboard (interaction.ts) ----------
+  const interaction = createInteraction({
+    three: THREE, container, canvas, camera, controls, scene, parts, actions: a,
+    accent: () => materials.cable.blue.color, // --accent
+    reducedMotion: ctx.reducedMotion,
+    requestRender,
+    onInfo: (id) => opts.onPick(id),
+    onHover: (h) => { if (h !== hovering) { hovering = h; requestRender() } },
+    onUserCamera: userTookOver,
+    partName: (id) => lookup(bench3dStrings[ctx.lang()], `parts.${id}.name`),
+    armReadout: () => {
+      const B = benchStrings[ctx.lang()]
+      const id = a.lineOnCell()
+      if (!id) return B.between
+      const nm = a.spectrumOnWindow().find((l) => l.id === id)?.lambda_nm ?? 0
+      return fill(B.lineNm, { name: B.lines[id], nm: Math.round(nm) })
+    },
+    debug: new URLSearchParams(location.search).get('debug3d') === '1',
+  })
 
   // ---------- theme, visibility, context loss ----------
-  const onTheme = (): void => { materials.refresh(); (scene.background as THREE.Color).copy(materials.tokens.plate); requestRender() }
+  const onTheme = (): void => { materials.refresh(); interaction.refreshTheme(); (scene.background as THREE.Color).copy(materials.tokens.plate); requestRender() }
   const mo = new MutationObserver(onTheme)
   mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
   const scheme = matchMedia('(prefers-color-scheme: dark)')
@@ -245,6 +262,7 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
         if (k >= 1) anim = null
         needsRender = true
       }
+      if (interaction.tick(dt)) needsRender = true
       if (controls.update()) needsRender = true // true while damping or moving
       if (needsRender) {
         needsRender = false
@@ -257,17 +275,22 @@ export function createBenchScene(container: HTMLElement, ctx: ViewContext, opts:
     focus(list) {
       const ids = list ? parts.forControls(list) : []
       parts.highlight(ids.length ? ids : null)
+      interaction.setFocus(ids)
+    },
+    relabel() {
+      canvas.setAttribute('aria-label', bench3dStrings[ctx.lang()].canvasLabel)
+      for (const m of models) m.relabel?.()
+      requestRender()
     },
     highlight: (ids) => parts.highlight(ids),
     destroy() {
+      interaction.destroy()
       for (const m of models) m.dispose()
       parts.dispose()
       controls.dispose()
       ro.disconnect(); mo.disconnect()
       scheme.removeEventListener('change', onTheme)
       document.removeEventListener('visibilitychange', onVis)
-      canvas.removeEventListener('pointerdown', onDown)
-      canvas.removeEventListener('pointerup', onUp)
       canvas.removeEventListener('webglcontextlost', onLost)
       const seen = new Set<THREE.Material>()
       scene.traverse((o) => {

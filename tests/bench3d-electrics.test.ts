@@ -78,7 +78,9 @@ describe('cables', () => {
     const by = Object.fromEntries(CABLES.map((c) => [c.id, c]))
     const ends = (id: string) => { const c = curve(by[id]!.points, by[id]!.radius); return [c.getPoint(0).toArray(), c.getPoint(1).toArray()] }
     expect(ends('bnc')[0]).toEqual([13.3, 3, 0.5].map((v) => expect.closeTo(v, 9))) // 8.1 BNC cathode
-    expect(ends('anode')[0]).toEqual([13.3, 6.5, -4.5].map((v) => expect.closeTo(v, 9))) // 8.2 ring anode
+    expect(ends('anode')[0]).toEqual([...SOCKETS.s82b].map((v) => expect.closeTo(v, 9))) // second 4 mm socket of 8.2
+    expect(ends('bridge')[0]).toEqual([13.3, 6.5, -4.5].map((v) => expect.closeTo(v, 9))) // 8.2 ring anode
+    expect(ends('bridge')[1]).toEqual([...SOCKETS.s82b].map((v) => expect.closeTo(v, 9)))
     expect(ends('lamp')[0]).toEqual([...SOCKETS.lamp].map((v) => expect.closeTo(v, 9))) // lamp
     for (const c of CABLES) {
       const cv = curve(c.points, c.radius)
@@ -112,7 +114,7 @@ function build() {
     cable: { red: mat(), blue: mat(), black: mat(), yellowGreen: mat() },
   } as never
   const parts = new PartRegistry(THREE, () => {})
-  const ctx = { scene, three: THREE, materials, parts, units, requestRender: () => {} }
+  const ctx = { scene, three: THREE, materials, parts, units, requestRender: () => {}, lang: () => 'en', preset: () => 'overview', hovering: () => false }
   const model = withDom(() => buildElectrics(ctx as never))
   return { scene, parts, model }
 }
@@ -137,7 +139,7 @@ describe('electrics builder', () => {
   it('moves the key cap down when pressed and turns the knob to the detent', () => {
     const { parts, model } = build()
     const r = (o: object) => ({ meterRange: 3, needleFraction: 0.5, overRange: false, keyPressed: false, ...o }) as never
-    const cap = (() => { let c: THREE.Object3D | undefined; parts.getPart('key')!.object.traverse((o) => { if (o !== parts.getPart('key')!.object && o.userData.pressHandle) c = o }); return c! })()
+    const cap = parts.getPart('key')!.object.getObjectByName('key-cap')!
     const knob = parts.getPart('meterKnob')!.object
     withDom(() => model.update(r({}), {} as never))
     const up = cap.position.y

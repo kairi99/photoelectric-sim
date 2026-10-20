@@ -116,6 +116,7 @@ export function mountBench3D(root: HTMLElement, ctx: ViewContext, opts: Bench3DO
     cardGo.textContent = s.goToControl
     cardClose.textContent = s.close
     cardClose.setAttribute('aria-label', s.close)
+    scene?.relabel()
     showCard(cardPart)
   }
   relabel()

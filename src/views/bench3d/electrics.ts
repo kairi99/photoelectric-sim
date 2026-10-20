@@ -3,6 +3,7 @@
 // Procedural geometry only. Coordinates: see ./electrics/layout.ts and ../units.ts (cm, y up, table top y = 0).
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import type * as THREE from 'three'
+import type { MeterRange } from '../../apparatus/index.ts'
 import type { Builder } from './builders.ts'
 import { needleAngleDeg } from '../benchkit.ts'
 import { cableCurve } from './electrics/cableCurve.ts'
@@ -84,6 +85,22 @@ export const buildElectrics: Builder = (ctx) => {
   socket4(choke, 3.8, 4.2, cz, dark)
   socket4(choke, 1.4, 4.2, cz, M.cable.red)
   add(choke, rbox(12.4, 0.5, 0.2, 0.1, 2), M.metal, 0, 1.4, cz + 0.02, false) // trim line below the sockets
+  // power rocker switch: tilts in when the lamp is on; clicking it (or the lamp) toggles the lamp
+  const rocker = new T.Group()
+  rocker.position.set(-4.0, 4.6, cz)
+  choke.add(rocker)
+  add(rocker, rbox(2.5, 3.4, 0.3, 0.2, 2), dark, 0, 0, 0.1)
+  const rockerOnMat = std({ color: 0xc43a2a, roughness: 0.45, emissive: 0x000000 })
+  const rockerPaddle = new T.Group()
+  rockerPaddle.position.set(0, 0, 0.3)
+  rocker.add(rockerPaddle)
+  const paddle = add(rockerPaddle, rbox(1.8, 2.7, 0.7, 0.25, 2), rockerOnMat, 0, 0, 0.2)
+  paddle.name = 'choke-rocker'
+  add(rocker, track(new T.CircleGeometry(0.14, 12)), white, 0, -2.2, 0.26, false) // I / O hint dots
+  add(rocker, track(new T.RingGeometry(0.1, 0.18, 14)), white, 0, 2.2, 0.26, false)
+  const rockerHit = add(rocker, box(3.2, 4.2, 1.4), track(new T.MeshBasicMaterial({ visible: false })), 0, 0, 0.5, false)
+  rockerHit.name = 'choke-rocker-hit'
+  for (const m of [paddle, rockerHit]) m.userData.clickHandle = 'lamp'
   ctx.parts.registerPart('choke', choke, { labelKey: 'parts.choke.name', infoKey: 'parts.choke.info' })
 
   // ================================================================ electrometer amplifier 532 14
@@ -139,8 +156,11 @@ export const buildElectrics: Builder = (ctx) => {
   const KEY_REST_Y = 0.9 + 1.3 + 0.4, KEY_TRAVEL = 0.55
   const capMesh = add(key, track(new T.CylinderGeometry(0.8, 0.86, 0.8, 28)), M.cable.red, 0, KEY_REST_Y, 0)
   add(key, track(new T.CylinderGeometry(0.28, 0.28, 0.5, 12)), M.metal, 0, 0.9 + 1.3 + 0.1, 0, false) // stem seen when pressed
+  capMesh.name = 'key-cap'
+  const keyHit = add(key, track(new T.CylinderGeometry(1.7, 1.7, 2.2, 16)), track(new T.MeshBasicMaterial({ visible: false })), 0, 1.9, 0, false)
+  keyHit.name = 'key-hit'
+  for (const m of [capMesh, keyHit]) m.userData.pressHandle = 'key'
   key.userData.pressHandle = 'key'
-  capMesh.userData.pressHandle = 'key'
   ctx.parts.registerPart('key', key, { labelKey: 'parts.key.name', infoKey: 'parts.key.info', controlId: 'key' })
 
   // ================================================================ plug-in supply 562 791
@@ -177,7 +197,7 @@ export const buildElectrics: Builder = (ctx) => {
   meter.add(face)
   const dialV = 8.4
   // dial window: printed face, 3D frame
-  const dial = canvasTex(DIAL_PX.w, DIAL_PX.h, (g) => drawDial(g, 'OFF'))
+  const dial = canvasTex(DIAL_PX.w, DIAL_PX.h, (g) => drawDial(g, 'OFF', ctx.lang()))
   // unlit and not tone-mapped: the printed scale keeps its ink contrast under any light (this is the student's reading instrument)
   const dialMat = track(new T.MeshBasicMaterial({ map: dial.tex, toneMapped: false }))
   add(face, track(new T.PlaneGeometry(DIAL_CM.w, DIAL_CM.h)), dialMat, 0, dialV, 0.28, false)
@@ -197,8 +217,9 @@ export const buildElectrics: Builder = (ctx) => {
   // range knob and printed strip
   const kv = METER_KNOB_V, plateH = 3.6, plateV = 2.2
   const ppc = 98
-  const strip = canvasTex(Math.round(DIAL_CM.w * ppc), Math.round(plateH * ppc), (g) =>
-    drawKnobPlate(g, Math.round(DIAL_CM.w * ppc), Math.round(plateH * ppc), (DIAL_CM.w * ppc) / 2, (plateH / 2 + (plateV - kv)) * ppc, ppc))
+  const drawStrip = (g: CanvasRenderingContext2D): void =>
+    drawKnobPlate(g, Math.round(DIAL_CM.w * ppc), Math.round(plateH * ppc), (DIAL_CM.w * ppc) / 2, (plateH / 2 + (plateV - kv)) * ppc, ppc, ctx.lang())
+  const strip = canvasTex(Math.round(DIAL_CM.w * ppc), Math.round(plateH * ppc), drawStrip)
   add(face, track(new T.PlaneGeometry(DIAL_CM.w, plateH)), printed(strip.tex), 0, plateV, 0.02, false)
   const knob = new T.Group()
   knob.position.set(0, kv, 0.03)
@@ -206,6 +227,8 @@ export const buildElectrics: Builder = (ctx) => {
   add(knob, cylZ(0.98, 0.5, 40), dark, 0, 0, 0.25)
   add(knob, cylZ(0.78, 0.18, 40), std({ color: 0x3a3d44, roughness: 0.4, metalness: 0.3 }), 0, 0, 0.55, false)
   add(knob, box(0.15, 0.78, 0.07), white, 0, 0.42, 0.65, false)
+  const knobHit = add(knob, cylZ(1.6, 0.9, 20), track(new T.MeshBasicMaterial({ visible: false })), 0, 0, 0.35, false)
+  knobHit.name = 'range-knob-hit'
   knob.userData.dragHandle = 'range'
   knob.traverse((o) => { o.userData.dragHandle = 'range' })
   // input terminals on the front lip
@@ -265,14 +288,18 @@ export const buildElectrics: Builder = (ctx) => {
   let needleTarget = 0
   let knobDeg = knobAngleDeg('OFF'), knobTarget = knobDeg
   let keyDepth = 0, keyTarget = 0
-  let drawnRange: string | null = 'OFF'
+  let drawnKey: string | null = `OFF|${ctx.lang()}`
   let moving = false
   let first = true
+  let lastRange: MeterRange = 'OFF'
+  let rockerTarget = 0, rocker01 = 0
 
   const apply = (): void => {
     needleGroup.rotation.z = -needleAngleDeg(needleSpring.x) * DEG
     knob.rotation.z = -knobDeg * DEG
     capMesh.position.y = KEY_REST_Y - KEY_TRAVEL * keyDepth
+    rockerPaddle.rotation.x = (rocker01 - 0.5) * 0.5 // top edge in when on
+    rockerOnMat.emissive.setHex(rocker01 > 0.5 ? 0x5a1008 : 0x000000)
   }
   const reduced = (): boolean => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -281,17 +308,20 @@ export const buildElectrics: Builder = (ctx) => {
       needleTarget = needleTargetFraction(r)
       knobTarget = knobAngleDeg(r.meterRange)
       keyTarget = r.keyPressed ? 1 : 0
-      const rk = String(r.meterRange)
-      if (rk !== drawnRange) {
-        drawnRange = rk
-        drawDial(dial.g, r.meterRange)
+      lastRange = r.meterRange
+      const rk = `${r.meterRange}|${ctx.lang()}`
+      if (rk !== drawnKey) {
+        drawnKey = rk
+        drawDial(dial.g, r.meterRange, ctx.lang())
         dial.tex.needsUpdate = true
       }
+      rockerTarget = r.lampOn ? 1 : 0
       if (first || reduced()) {
         first = false
         needleSpring.x = needleTarget; needleSpring.v = 0
         knobDeg = knobTarget
         keyDepth = keyTarget
+        rocker01 = rockerTarget
         moving = false
         apply()
       } else moving = true
@@ -302,10 +332,19 @@ export const buildElectrics: Builder = (ctx) => {
       let m = stepNeedle(needleSpring, needleTarget, dt)
       const k = easeTo(knobDeg, knobTarget, dt, 0.07, 0.05)
       const d = easeTo(keyDepth, keyTarget, dt, 0.04, 0.01)
-      m = m || k !== knobTarget || d !== keyTarget
-      knobDeg = k; keyDepth = d
+      const rk = easeTo(rocker01, rockerTarget, dt, 0.05, 0.01)
+      m = m || k !== knobTarget || d !== keyTarget || rk !== rockerTarget
+      knobDeg = k; keyDepth = d; rocker01 = rk
       apply()
       moving = m
+      ctx.requestRender()
+    },
+    relabel() {
+      drawnKey = `${lastRange}|${ctx.lang()}`
+      drawDial(dial.g, lastRange, ctx.lang())
+      dial.tex.needsUpdate = true
+      drawStrip(strip.g)
+      strip.tex.needsUpdate = true
       ctx.requestRender()
     },
     dispose() {
