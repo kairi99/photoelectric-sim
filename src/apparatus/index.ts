@@ -1,2 +1,2 @@
-// Device logic (key switch, capacitor, multimeter, lamp, swivelling arm). Filled in from Phase 2.
-export {}
+// Device logic (key switch, capacitor, multimeter, lamp, swivelling arm).
+export * from './apparatus.ts'
