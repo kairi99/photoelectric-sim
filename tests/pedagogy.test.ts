@@ -49,7 +49,7 @@ const SOLUTIONS: Record<string, (a: Apparatus) => void> = {
   intensity: (a) => {
     warmUp(a)
     measure(a, 'green')
-    a.setDimming(0.25)
+    a.setBeamIntensity(0.25)
     measure(a, 'green')
   },
   planck: (a) => { warmUp(a); for (const id of VISIBLE_LINES) measure(a, id) },
@@ -173,7 +173,7 @@ describe('guided tasks', () => {
     warmUp(a)
     measure(a, 'green')
     measure(a, 'blue') // other line, still bright
-    a.setDimming(0.2)
+    a.setBeamIntensity(0.2)
     measure(a, 'violet')
     expect(t.success(a)).toBe(false)
     measure(a, 'green')
@@ -183,7 +183,7 @@ describe('guided tasks', () => {
     const a = new Apparatus({ mode: 'explore' })
     warmUp(a)
     measure(a, 'blue')
-    a.setDimming(0.25)
+    a.setBeamIntensity(0.25)
     measure(a, 'blue')
     const [hi, lo] = a.measurements
     expect(Math.abs(hi!.U0_V - lo!.U0_V)).toBeLessThan(0.03)

@@ -8,8 +8,15 @@ export const R_CELL_CLEAN_Ohm = 1e14
 export const R_CELL_DIRTY_Ohm = 1e12
 /** Electrometer amplifier input resistance (leaflet-class device: > 1e13 Ohm). */
 export const R_INPUT_Ohm = 1e13
-/** Time constant of the capacitor discharge while the key switch is held (s); the ~1 kOhm contact short is faster, so this is the observed meter/cable-limited value. */
+/**
+ * Time constant of the capacitor discharge while the key switch (short across the capacitor) is held (s). Assumed:
+ * the real short is a few kOhm x ~120 pF (microseconds), so this is a deliberately slow, visible discharge; it is a
+ * property of the short, not of the meter needle lag (NEEDLE_TAU_s in the apparatus).
+ */
 export const KEY_TAU_s = 0.05
+
+/** Largest voltage change allowed in one integration sub-step (V): numerical, not physical. */
+export const MAX_STEP_V = 0.01
 
 export interface CircuitInputs extends PhotoOptions {
   line: HgLineId
@@ -58,6 +65,8 @@ export function step(state: CircuitState, i: CircuitInputs, dt_s: number): Circu
   while (t < dt_s) {
     const rate = (-photocurrentSlope_AperV(U, i.line, i) + G_leak) / C // 1/s
     let h = Math.min(dt_s - t, rate > 0 ? 0.1 / rate : dt_s)
+    // The saturated plateau of F(U) has zero slope, so also limit the voltage change per sub-step (no jump over the kink).
+    h = Math.min(h, MAX_STEP_V / Math.max(Math.abs(dUdt(U, i)), 1e-12))
     h = Math.max(h, Math.min(dt_s - t, 1e-3))
     U = rk4(U, h, i)
     t += h

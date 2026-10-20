@@ -6,8 +6,10 @@ import {
   HG_LINES,
   IDEAL,
   KEY_TAU_s,
+  MAX_STEP_V,
   LAB,
   R_CELL_DIRTY_Ohm,
+  R_INPUT_Ohm,
   getLine,
   linearFit,
   maxContributingU0_V,
@@ -32,12 +34,21 @@ export const NEEDLE_TAU_s = 0.3
 export const MAX_REAL_DT_s = 5
 export const CHUNK_s = 0.25
 export const MAX_HISTORY = 2000
-export const SETTLE_RATE_VperS = 1e-3
+/** Settled when the projected remaining rise |dU/dt| x tau_local is below max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL x U)... */
+export const SETTLE_REMAIN_V = 1e-3
+export const SETTLE_REMAIN_REL = 1e-3
+/** ... and stays so for this long (s). */
 export const SETTLE_TIME_s = 5
+/** Beam-intensity (neutral-density filter) range, explore only. */
+export const BEAM_INTENSITY_MIN = 0.1
 export const LINE_SIGMA = 0.025 // line image width on the arm scale (1 sigma, arm fraction)
 export const ALIGNED_OVERLAP = 0.9
-/** Stray-light fraction the "stray light" switch applies (explore). */
-export const STRAY_PRESET_FRACTION = 0.02
+/**
+ * Stray-light fraction the "stray light" switch applies (explore), PARAMETERS.md. Tiny because the explore source is
+ * bright (IDEAL.I_ref_A) and the stray current must compete with a leakage of only ~1e-13 A at 1 V; a few 1e-5 is
+ * already enough to pull the weak low-frequency plateaus up. Chosen so the fitted h falls by ~10 %.
+ */
+export const STRAY_PRESET_FRACTION = 8.4e-5
 const NOISE = { explore: { sigma_V: 0.0005, offset_V: 0 }, lab: { sigma_V: 0.003, offset_V: 0.002 } } as const
 const AMBIENT_REL = 0.01 // room-light contribution relative to a fully open window
 const WAITED_s = 30
@@ -54,7 +65,7 @@ export interface SpectrumLine {
   position: number
   reachable: boolean
   overlap: number
-  /** Relative line intensity on the window (relPower x lamp brightness x dimming). */
+  /** Relative line intensity on the window (relPower x lamp brightness x beam-intensity filter). */
   intensity: number
 }
 
@@ -73,8 +84,8 @@ export interface Measurement {
   U0_V: number
   t_wait_s: number
   settled: boolean
-  /** Dimming slider when recorded (0..1). */
-  dimming: number
+  /** Explore beam-intensity filter when recorded (0.1..1; always 1 in lab, which has no filter). */
+  beamIntensity: number
   /** Explore override "dirty photocell" active when recorded. */
   dirty: boolean
   /** Explore override "stray light" active when recorded. */
@@ -122,7 +133,8 @@ export interface Controls {
   lampOn: boolean
   lampWarm_s: number
   armPosition: number
-  dimming: number
+  windowCover: number
+  beamIntensity: number
   keyPressed: boolean
   meterRange: MeterRange
   speed: Speed
@@ -156,7 +168,10 @@ export class Apparatus {
   mode: Mode
   lampOn = false
   armPosition = 0.5
-  dimming = 1
+  /** Emission-window cover (12), 0 = open, 1 = fully covered. Keeps room light out; does not dim the beam on the cathode. */
+  windowCover = 0
+  /** Explore-only neutral-density filter in the beam (0.1..1). */
+  beamIntensity = 1
   keyPressed = false
   meterRange: MeterRange = 3
   speed: Speed = 1
@@ -224,7 +239,8 @@ export class Apparatus {
     this.lampWarm_s = 0
     this.brightness = 0
     this.armPosition = 0.5
-    this.dimming = 1
+    this.windowCover = 0
+    this.beamIntensity = 1
     this.keyPressed = false
     this.meterRange = this.mode === 'lab' ? 'OFF' : 3
     this.speed = 1
@@ -267,7 +283,7 @@ export class Apparatus {
   serialize(): Controls {
     return {
       mode: this.mode, lampOn: this.lampOn, lampWarm_s: this.lampWarm_s, armPosition: this.armPosition,
-      dimming: this.dimming, keyPressed: this.keyPressed, meterRange: this.meterRange, speed: this.speed,
+      windowCover: this.windowCover, beamIntensity: this.beamIntensity, keyPressed: this.keyPressed, meterRange: this.meterRange, speed: this.speed,
       cathode: this.cathode, stray_fraction: this.stray_fraction, dirty: this.dirty, roomLights: this.roomLights,
       seed: this.seed, U_V: this.U_V,
     }
@@ -281,7 +297,8 @@ export class Apparatus {
     if (!this.lampOn) this.lampWarm_s = 0
     this.brightness = this.lampOn ? this.brightnessFromWarm(this.lampWarm_s) : 0
     if (c.armPosition !== undefined) this.armPosition = clamp(c.armPosition, 0, 1)
-    if (c.dimming !== undefined) this.dimming = clamp(c.dimming, 0, 1)
+    if (c.windowCover !== undefined) this.windowCover = clamp(c.windowCover, 0, 1)
+    if (c.beamIntensity !== undefined) this.beamIntensity = clamp(c.beamIntensity, BEAM_INTENSITY_MIN, 1)
     if (c.keyPressed !== undefined) this.keyPressed = c.keyPressed
     if (c.meterRange !== undefined) this.meterRange = c.meterRange
     if (c.speed !== undefined) this.speed = c.speed
@@ -309,8 +326,15 @@ export class Apparatus {
     this.checkAligned()
     this.changed()
   }
-  setDimming(d: number): void {
-    this.dimming = clamp(d, 0, 1)
+  /** Slider (12): cover the emission window (0 open .. 1 covered) to keep room light out. */
+  setWindowCover(c: number): void {
+    this.windowCover = clamp(c, 0, 1)
+    this.changed()
+  }
+  /** Explore-only neutral-density filter in the beam (0.1..1); the real bench has none. */
+  setBeamIntensity(b: number): void {
+    if (this.mode !== 'explore') return
+    this.beamIntensity = clamp(b, BEAM_INTENSITY_MIN, 1)
     this.changed()
   }
   setRange(r: MeterRange): void {
@@ -402,7 +426,7 @@ export class Apparatus {
         position,
         reachable: position >= 0 && position <= 1,
         overlap: this.overlap(l.id),
-        intensity: l.relPower * this.brightness * this.dimming,
+        intensity: l.relPower * this.brightness * this.effectiveBeam(),
       }
     })
   }
@@ -418,15 +442,29 @@ export class Apparatus {
   private scenario(): Scenario {
     return this.mode === 'lab' ? LAB : IDEAL
   }
+  /** Beam attenuation actually applied (the lab has no filter). */
+  private effectiveBeam(): number {
+    return this.mode === 'explore' ? this.beamIntensity : 1
+  }
+  private errorToggleOn(): boolean {
+    return this.mode === 'explore' && (this.dirty || (this.stray_fraction ?? 0) > 0)
+  }
   private photoOpts(): PhotoOptions & { R_cell_Ohm?: number; R_input_Ohm?: number } {
     const p = this.scenario().params
-    const o: PhotoOptions & { R_cell_Ohm?: number; R_input_Ohm?: number } = { ...p, dimming: this.dimming }
+    const o: PhotoOptions & { R_cell_Ohm?: number; R_input_Ohm?: number } = { ...p, beamIntensity: this.effectiveBeam() }
     if (this.mode === 'explore') {
       o.cathode = this.cathode
       if (this.stray_fraction !== null) o.stray_fraction = this.stray_fraction
       if (this.dirty) o.R_cell_Ohm = R_CELL_DIRTY_Ohm
+      // A real bench always has the electrometer input resistance; the ideal 1e21 Ohm would let any stray current
+      // charge every line up to the UV U0 (flat line, h ~ 0).
+      if (this.errorToggleOn()) o.R_input_Ohm = R_INPUT_Ohm
     }
     return o
+  }
+  /** Room-light weight relative to a fully open window; 0 unless room lights are on (lab only). */
+  private ambientWeight(): number {
+    return this.mode === 'lab' && this.roomLights ? AMBIENT_REL * (1 - this.windowCover) : 0
   }
   private brightnessFromWarm(w: number): number {
     const x = clamp(w / LAMP_WARMUP_s, 0, 1)
@@ -460,7 +498,7 @@ export class Apparatus {
     if (this.keyPressed) return U0 * Math.exp(-dt / KEY_TAU_s)
     const o = this.photoOpts()
     const ov = this.overlaps()
-    const ambient = this.mode === 'lab' && this.roomLights ? AMBIENT_REL * this.dimming : 0
+    const ambient = this.ambientWeight()
     const C = C_TOTAL_F
     const G = 1 / totalLeakage_Ohm({ ...o, line: 'yellow' })
     const Umax = this.maxU0_V()
@@ -470,8 +508,9 @@ export class Apparatus {
     while (t < dt) {
       const rate = (-this.currents(U, ov, o, ambient).dI + G) / C
       let h = Math.min(dt - t, rate > 0 ? 0.1 / rate : dt)
-      h = Math.max(h, Math.min(dt - t, 1e-3))
       const k1 = f(U)
+      h = Math.min(h, MAX_STEP_V / Math.max(Math.abs(k1), 1e-12)) // do not jump over the kink of the saturated F(U)
+      h = Math.max(h, Math.min(dt - t, 1e-3))
       const k2 = f(U + 0.5 * h * k1)
       const k3 = f(U + 0.5 * h * k2)
       const k4 = f(U + h * k3)
@@ -504,9 +543,16 @@ export class Apparatus {
     const rate = (this.U_V - Uold) / h
     const since = this.clock_s - this.releaseTime_s
 
-    // plateau detector
+    // plateau detector: projected remaining rise = |dU/dt| x local time constant (linearised C / (G - dI/dU))
     const eligible = !this.keyPressed && this.lampOn && this.brightness >= 0.99 && this.U_V > 0.01
-    if (eligible && Math.abs(rate) < SETTLE_RATE_VperS) this.settleTime_s += h
+    let remaining_V = Infinity
+    if (eligible) {
+      const o = this.photoOpts()
+      const G = 1 / totalLeakage_Ohm({ ...o, line: 'yellow' })
+      const dI = this.currents(this.U_V, this.overlaps(), o, this.ambientWeight()).dI
+      remaining_V = Math.abs(rate) * (C_TOTAL_F / Math.max(G - dI, 1e-30))
+    }
+    if (eligible && remaining_V < Math.max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL * this.U_V)) this.settleTime_s += h
     else this.settleTime_s = 0
     this.settledNow = this.settleTime_s > SETTLE_TIME_s
     if (this.settledNow && !this.settledEmitted) {
@@ -605,7 +651,7 @@ export class Apparatus {
       U0_V: v,
       t_wait_s: this.clock_s - this.releaseTime_s,
       settled: this.settledNow,
-      dimming: this.dimming,
+      beamIntensity: this.effectiveBeam(),
       dirty: this.mode === 'explore' && this.dirty,
       stray: this.mode === 'explore' && (this.stray_fraction ?? 0) > 0,
     }

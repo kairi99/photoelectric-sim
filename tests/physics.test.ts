@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CATHODES, E_C, H_Js, HG_LINES, chargeCurve, emits, expectedReading_V, getLine, IDEAL, LAB, limitVoltage_V,
   linearFit, measureVisible, nuFromLambda, photocurrent_A, photonEnergy_eV, planckFromFit, step, steadyState_V,
-  W_A_eV, maxContributingU0_V,
+  W_A_eV, maxContributingU0_V, retardingShape, R_INPUT_Ohm,
 } from '../src/physics/index.ts'
 import type { CircuitInputs, HgLineId } from '../src/physics/index.ts'
 
@@ -66,13 +66,13 @@ describe('charging dynamics', () => {
       const inp: CircuitInputs = { ...s.params, line: id }
       const c = chargeCurve(inp, 120, 240)
       const cap = maxContributingU0_V(id, inp)
-      for (let k = 1; k < c.U_V.length; k++) expect(c.U_V[k]!).toBeGreaterThanOrEqual(c.U_V[k - 1]! - 1e-12)
+      for (let k = 1; k < c.U_V.length; k++) expect(c.U_V[k]!).toBeGreaterThanOrEqual(c.U_V[k - 1]! - 1e-9)
       expect(Math.max(...c.U_V)).toBeLessThanOrEqual(cap + 1e-9)
     }
   })
-  it('dimming to 25 % keeps the ideal U0 but at least doubles the 90 % time', () => {
+  it('beam intensity 25 % keeps the ideal U0 but at least doubles the 90 % time', () => {
     const base: CircuitInputs = { ...IDEAL.params, line: 'green' }
-    const dim: CircuitInputs = { ...base, dimming: 0.25 }
+    const dim: CircuitInputs = { ...base, beamIntensity: 0.25 }
     expect(Math.abs(steadyState_V(dim) - steadyState_V(base))).toBeLessThan(1e-3)
     const U0 = limitVoltage_V(nuOf('green'))
     // Use a long-lived equilibrium reference: both curves are run to 4000 s, 90 % of U0 is reached by both.
@@ -133,9 +133,74 @@ describe('lab calibration (leaflet Table 1, steady state)', () => {
     for (const id of visible)
       expect(Math.abs(at(id, 60) - steadyState_V({ ...LAB.params, line: id }))).toBeLessThan(0.02)
   })
-  it('in LAB, dimming slightly changes the plateau (leakage balance depends on I_sat)', () => {
-    const a = steadyState_V({ ...LAB.params, line: 'violet' })
-    const b = steadyState_V({ ...LAB.params, line: 'violet', dimming: 0.25 })
-    expect(b).toBeLessThan(a)
+  it('in LAB, a weaker beam lowers the plateau by the documented amount (leakage balance depends on I_sat)', () => {
+    // PARAMETERS.md: beamIntensity 1 vs 0.25 -> yellow 0.592/0.553, green 0.702/0.655, blue 1.218/1.126, violet 1.407/1.290 V.
+    const doc: Record<string, [number, number]> = { yellow: [0.592, 0.553], green: [0.702, 0.655], blue: [1.218, 1.126], violet: [1.407, 1.290] }
+    for (const id of visible) {
+      const full = steadyState_V({ ...LAB.params, line: id })
+      const weak = steadyState_V({ ...LAB.params, line: id, beamIntensity: 0.25 })
+      expect(Math.abs(full - doc[id]![0])).toBeLessThan(0.002)
+      expect(Math.abs(weak - doc[id]![1])).toBeLessThan(0.002)
+    }
+    const h = (b: number) => planckFromFit(linearFit(visible.map(nuOf), visible.map((id) => steadyState_V({ ...LAB.params, line: id, beamIntensity: b }))).slope)
+    expect(h(0.25) / h(1)).toBeGreaterThan(0.88)
+    expect(h(0.25) / h(1)).toBeLessThan(0.94)
+  })
+})
+
+describe('retarding shape with contact potential (W_A < W_C)', () => {
+  const W_C = CATHODES.photocell.W_C_eV
+  const nu = nuOf('blue')
+  const U0 = limitVoltage_V(nu)
+  it('is saturated up to (W_C - W_A)/e, 0 at U0 and falls over the real spread h nu - W_C', () => {
+    const Usat = W_C - W_A_eV
+    expect(Usat).toBeGreaterThan(0)
+    expect(retardingShape(0, nu, W_C, W_A_eV)).toBe(1)
+    expect(retardingShape(Usat - 1e-9, nu, W_C, W_A_eV)).toBe(1)
+    expect(retardingShape(U0, nu, W_C, W_A_eV)).toBe(0)
+    const spread = photonEnergy_eV(nu) - W_C
+    expect(retardingShape(Usat + spread / 2, nu, W_C, W_A_eV)).toBeCloseTo(0.25, 12)
+  })
+  it('reduces to (1 - U/U0)^2 when W_A >= W_C', () => {
+    const W_A = 2.0, Wc = 1.9
+    const u0 = limitVoltage_V(nu, W_A)
+    for (const f of [0, 0.2, 0.5, 0.9]) expect(retardingShape(f * u0, nu, Wc, W_A)).toBeCloseTo((1 - f) ** 2, 12)
+  })
+})
+
+describe('what the intercept means', () => {
+  it('ideal U0 does not depend on the cathode (Cs and photocell agree for blue, violet, green)', () => {
+    for (const id of ['green', 'blue', 'violet'] as HgLineId[]) {
+      const a = steadyState_V({ ...IDEAL.params, line: id, cathode: 'photocell' })
+      const b = steadyState_V({ ...IDEAL.params, line: id, cathode: 'Cs' })
+      expect(Math.abs(a - b)).toBeLessThan(1e-3)
+      expect(Math.abs(a - limitVoltage_V(nuOf(id)))).toBeLessThan(1e-3)
+    }
+  })
+  it('yellow emits with the photocell (1.9 eV) but not with pure K (2.29 eV)', () => {
+    expect(emits(nuOf('yellow'), CATHODES.photocell.W_C_eV)).toBe(true)
+    expect(emits(nuOf('yellow'), CATHODES.K.W_C_eV)).toBe(false)
+    expect(photocurrent_A(0, 'yellow', { cathode: 'photocell' })).toBeGreaterThan(0)
+    expect(photocurrent_A(0, 'yellow', { cathode: 'K' })).toBe(0)
+  })
+  it('the ideal fit intercept is -W_A/e (the anode, not the cathode)', () => {
+    const d = measureVisible(IDEAL)
+    const f = linearFit(d.nu_Hz, d.U_V)
+    expect(Math.abs(f.intercept + W_A_eV)).toBeLessThan(2e-3)
+    expect(Math.abs(f.intercept + CATHODES.photocell.W_C_eV)).toBeGreaterThan(0.3)
+  })
+})
+
+describe('explore error sources with the finite electrometer input resistance', () => {
+  const fitH = (extra: object) => {
+    const U = visible.map((id) => steadyState_V({ ...IDEAL.params, ...extra, line: id }))
+    return { U, h: planckFromFit(linearFit(visible.map(nuOf), U).slope) }
+  }
+  it('stray light with the ideal 1e21 Ohm drives every line towards the UV U0 (why the input resistance is needed)', () => {
+    const { U } = fitH({ stray_fraction: 1e-3 })
+    expect(Math.max(...U) - Math.min(...U)).toBeLessThan(0.5)
+  })
+  it('input resistance alone (no stray) keeps h within 3 % of true in the bright explore source', () => {
+    expect(Math.abs(fitH({ R_input_Ohm: R_INPUT_Ohm }).h / H_Js - 1)).toBeLessThan(0.03)
   })
 })

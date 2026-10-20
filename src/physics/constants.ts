@@ -10,8 +10,9 @@ export interface HgLine {
   /** Vacuum-ish wavelength of the line in nm (yellow is the 577/579 doublet mean). */
   lambda_nm: number
   /**
-   * Relative line power on the cathode (dimensionless, green = 1). Empirical: lamp output x prism/lens
-   * transmission (UV is absorbed by glass optics). Documented in PARAMETERS.md.
+   * Relative line power on the cathode (dimensionless). ASSUMED equal (1.0) for the visible lines: not fitted, no
+   * reliable relative intensities for this lamp/optics. UV is set to 0.05 because glass optics absorb it (explore
+   * only; not on the lab window). Documented in PARAMETERS.md.
    */
   relPower: number
 }
@@ -20,7 +21,7 @@ export const HG_LINES: readonly HgLine[] = [
   { id: 'yellow', lambda_nm: 578.0, relPower: 1.0 },
   { id: 'green', lambda_nm: 546.1, relPower: 1.0 },
   { id: 'blue', lambda_nm: 435.8, relPower: 1.0 },
-  { id: 'violet', lambda_nm: 404.7, relPower: 0.6 },
+  { id: 'violet', lambda_nm: 404.7, relPower: 1.0 },
   { id: 'uv', lambda_nm: 365.0, relPower: 0.05 },
 ]
 
@@ -44,7 +45,7 @@ export const CATHODES: Readonly<Record<CathodeId, Cathode>> = {
  * Effective work function of the ring anode in eV. U0 follows the ANODE barrier: current is zero when
  * h*nu = W_A + e*U0 (leaflet eq. VII). The ring is K-contaminated (evaporated cathode material), hence far below Pt.
  */
-export const W_A_eV = 1.52
+export const W_A_eV = 1.529
 
 /** Look up a line by id (throws for unknown ids). */
 export function getLine(id: HgLineId): HgLine {
