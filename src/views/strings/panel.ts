@@ -31,7 +31,7 @@ interface PanelStrings {
 
 const en: PanelStrings = {
   meterTitle: 'Analog multimeter',
-  meterLabel: 'Analog voltmeter dial',
+  meterLabel: 'Analog multimeter dial',
   unitVdc: 'V DC',
   meterOff: 'Meter off',
   overRange: 'Over range',
@@ -60,9 +60,9 @@ const en: PanelStrings = {
 
 const es: PanelStrings = {
   meterTitle: 'Multímetro analógico',
-  meterLabel: 'Escala del voltímetro analógico',
+  meterLabel: 'Escala del multímetro analógico',
   unitVdc: 'V CC',
-  meterOff: 'Medidor apagado',
+  meterOff: 'Multímetro apagado',
   overRange: 'Fuera de escala',
   needleAt: 'Aguja al {frac} % del fondo de escala',
   rangeGroup: 'Rango de tensión',

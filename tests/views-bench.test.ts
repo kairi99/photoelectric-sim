@@ -47,6 +47,9 @@ describe('bench drawing helpers', () => {
   })
   it('scale ticks match the range type', () => {
     expect(scaleTicks(3).filter((t) => t.major)).toHaveLength(7)
+    // fine ticks: 0.1 V steps on the 3 V range, 0.02 V on the 1 V range
+    expect(scaleTicks(3)).toHaveLength(31)
+    expect(scaleTicks(1)).toHaveLength(51)
     expect(scaleTicks(1).filter((t) => t.major)).toHaveLength(11)
     expect(scaleTicks(0.3).at(-1)?.fraction).toBe(1)
     expect(scaleTicks(3).filter((t) => t.label !== null).map((t) => t.label)).toEqual(['0', '1', '2', '3'])

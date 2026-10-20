@@ -14,23 +14,27 @@
 .dial { position: relative; }
 .dial-svg { display: block; width: 100%; height: auto; max-width: 420px; margin-inline: auto; background: var(--surface-2); border-radius: var(--radius-m); }
 .dial-arc { fill: none; stroke: var(--label-2); stroke-width: 1.5; }
-.tick-major { stroke: var(--label); stroke-width: 2; }
-.tick-minor { stroke: var(--label-2); stroke-width: 1; }
-.dial-num { font: var(--text-footnote); fill: var(--label); font-variant-numeric: tabular-nums; }
+.dial-mirror { fill: none; stroke: var(--label-3); stroke-width: 1; }
+.tick-major { stroke: var(--label); stroke-width: 1.5; }
+.tick-minor { stroke: var(--label-2); stroke-width: 0.75; }
+.dial-num { font: var(--text-callout); fill: var(--label); font-variant-numeric: tabular-nums; }
 .dial-unit { font: var(--text-callout); font-weight: 600; fill: var(--label-2); }
 .dial-range { font: var(--text-footnote); fill: var(--label-2); }
-.dial-needle { transform-origin: 150px 168px; transition: transform 120ms var(--ease-out); }
-.dial-needle-line { stroke: var(--danger); stroke-width: 2; stroke-linecap: round; }
+.dial-needle { transform-origin: 150px 168px; transition: transform var(--dur-needle) var(--ease-out); }
+.dial-needle-line { stroke: var(--label); stroke-width: 1.75; stroke-linecap: round; }
 .dial-hub { fill: var(--label); }
-.meter-off .dial-svg { opacity: 0.5; }
+.dial-hub-dot { fill: var(--surface-2); }
+.meter-off .dial-svg { opacity: 0.7; }
 .dial-badge {
-  position: absolute; left: 50%; top: var(--space-2); transform: translateX(-50%); margin: 0; padding: var(--space-1) var(--space-3);
+  position: absolute; left: 50%; top: 48%; transform: translateX(-50%); margin: 0; padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full); font: var(--text-footnote); font-weight: 600; white-space: nowrap;
 }
 .dial-badge[data-kind='over'] { background: var(--danger); color: var(--on-accent); }
 .dial-badge[data-kind='off'] { background: var(--fill); color: var(--label-2); }
-.digital { margin: 0; font: var(--text-headline); font-variant-numeric: tabular-nums; text-align: center; font-family: var(--font-mono); }
-.digital:empty { display: none; }
+.digital { margin: 0; font: var(--text-headline); font-variant-numeric: tabular-nums; text-align: center; }
+.digital-lbl { font-family: var(--font); color: var(--label-2); font-weight: 400; }
+.digital-val { font-family: var(--font-mono); }
+.digital:not(:has(.digital-val:not(:empty))) { display: none; }
 
 /* Segmented control */
 .seg { display: flex; flex-wrap: wrap; gap: var(--space-1); background: var(--fill); border-radius: var(--radius-m); padding: var(--space-1); }
@@ -39,22 +43,24 @@
   cursor: pointer; font: var(--text-callout); font-variant-numeric: tabular-nums; touch-action: manipulation;
   transition: background-color var(--dur-fast) var(--ease-out);
 }
+.seg-btn { padding-inline: var(--space-2); white-space: nowrap; }
 .seg-btn[aria-checked='true'] { background: var(--surface); box-shadow: var(--shadow-1); font-weight: 600; }
-.seg-range { display: grid; grid-template-columns: repeat(4, 1fr); }
-@media (min-width: 520px) { .seg-range { grid-template-columns: repeat(7, 1fr); } }
+.seg-range { display: grid; grid-template-columns: repeat(4, minmax(var(--touch), 1fr)); }
+@media (min-width: 520px) { .seg-range { grid-template-columns: auto repeat(6, minmax(var(--touch), 1fr)); } }
 .panel[data-mode='lab'] .seg-btn.only-explore { display: none; }
 
 /* Key switch */
 .key-btn {
-  display: block; width: 100%; min-height: 96px; padding: 0; border: none; background: var(--fill); border-radius: var(--radius-l);
+  display: block; width: 100%; min-height: 88px; padding: 0; border: none; background: var(--fill); border-radius: var(--radius-l);
   cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 .key-cap {
-  display: grid; place-items: center; min-height: 80px; margin: var(--space-2); border-radius: var(--radius-m);
-  background: var(--accent-fill); color: var(--on-accent); box-shadow: 0 6px 0 var(--key-edge); transform: translateY(-3px);
+  display: grid; place-items: center; min-height: 72px; margin: var(--space-2); border-radius: var(--radius-m);
+  background: var(--surface-2); color: var(--label); box-shadow: 0 6px 0 var(--key-edge); transform: translateY(-3px);
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
-.key-btn.is-pressed .key-cap { transform: translateY(3px); box-shadow: 0 0 0 var(--key-edge); }
+/* The accent appears only while the key is held. */
+.key-btn.is-pressed .key-cap { background: var(--accent-fill); color: var(--on-accent); transform: translateY(3px); box-shadow: 0 0 0 var(--key-edge); }
 .key-text { font: var(--text-headline); padding: 0 var(--space-3); }
 
 /* Amplifier */
@@ -62,18 +68,19 @@
 .amp-led { width: 10px; height: 10px; border-radius: var(--radius-full); background: var(--success); box-shadow: 0 0 0 3px var(--fill); }
 
 /* Stopwatch */
-.sw-time { margin: 0; font: 600 28px/32px var(--font-mono); font-variant-numeric: tabular-nums; }
+.sw-time { margin: 0; font: var(--text-display); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .sw-settled { margin: 0; min-height: 20px; font: var(--text-footnote); color: var(--label-2); opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
 .sw-settled.is-on { opacity: 1; }
 .sw-settled[data-mode='explore'].is-on { color: var(--success); font-weight: 600; }
 .sw-settled[data-mode='explore'].is-on::before { content: '\2713\00a0'; }
 
-@media (min-width: 820px) and (max-width: 1100px) {
+@media (min-width: 820px) and (max-width: 1199px) {
   .panel { grid-template-columns: 1fr 1fr; }
-  .panel .card-meter { grid-column: 1 / -1; }
+  .panel .card-meter, .panel .card-key, .panel .card-speed { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dial-needle, .key-cap, .seg-btn, .panel .card, .sw-settled { transition: none; }
 }
 
 .sw-time.is-text { font: var(--text-headline); font-family: var(--font); color: var(--label-2); }
+.seg-range .seg-btn:first-child { padding-inline: var(--space-3); }

@@ -15,8 +15,8 @@ describe('string parity', () => {
 })
 
 const ms: Measurement[] = [
-  { lineId: 'blue', lambda_nm: 435.8, nu_Hz: 6.88e14, U0_V: 1.2346, t_wait_s: 62.04, settled: true, beamIntensity: 1, dirty: false, stray: false },
-  { lineId: null, lambda_nm: null, nu_Hz: null, U0_V: 0.5, t_wait_s: 10, settled: false, beamIntensity: 1, dirty: false, stray: false },
+  { lineId: 'blue', lambda_nm: 435.8, nu_Hz: 6.88e14, U0_V: 1.2346, t_wait_s: 62.04, settled: true, beamIntensity: 1, dirty: false, stray: false, dischargedSinceAlign: true },
+  { lineId: null, lambda_nm: null, nu_Hz: null, U0_V: 0.5, t_wait_s: 10, settled: false, beamIntensity: 1, dirty: false, stray: false, dischargedSinceAlign: true },
 ]
 
 describe('toCSV', () => {

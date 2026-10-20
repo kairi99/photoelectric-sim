@@ -39,6 +39,7 @@
 }
 .steps li[aria-current='step'] { border-color: var(--accent); color: var(--label); font-weight: 600; }
 .steps li[data-past] { border-color: var(--success); }
+.steps li[data-past]::before { content: '\2713\00a0'; color: var(--success); font-weight: 700; }
 .task-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); font: var(--text-callout); }
 .choices { display: grid; gap: var(--space-2); }
 .choice {
@@ -94,7 +95,7 @@
 
 /* ---- procedure checklist ---- */
 .proc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
-.proc-item { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; font: var(--text-callout); color: var(--label-2); }
+.proc-item { display: flex; align-items: center; gap: var(--space-2); min-height: var(--touch); font: var(--text-callout); color: var(--label-2); }
 .proc-item.is-current { color: var(--label); font-weight: 600; }
 .proc-item.is-done { color: var(--label); }
 .proc-mark {
@@ -126,8 +127,9 @@
   position: fixed; left: var(--space-4); right: var(--space-4); margin-inline: auto; max-width: 24rem;
   background: var(--surface); color: var(--label); border-radius: var(--radius-l); box-shadow: var(--shadow-sheet);
   padding: var(--space-4); display: grid; gap: var(--space-2);
+  max-height: calc(100dvh - 2 * var(--space-4)); overflow-y: auto; overscroll-behavior: contain;
 }
-.tour-card[data-pos='bottom'] { bottom: var(--space-4); }
+.tour-card[data-pos='bottom'] { bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
 .tour-card[data-pos='top'] { top: var(--space-4); }
 .tour-count { margin: 0; font: var(--text-caption); color: var(--label-2); }
 .tour-title { margin: 0; font: var(--text-headline); }

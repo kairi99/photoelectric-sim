@@ -136,13 +136,23 @@ function boot(root: HTMLElement): void {
   learn.id = 'learn'
   learn.dataset.region = 'learn'
   learn.setAttribute('inert', '')
+  const grabber = h('button', 'learn-grab', learn)
+  grabber.type = 'button'
+  grabber.setAttribute('aria-expanded', 'false')
   const learnHead = h('div', 'learn-head', learn)
   const learnTitle = h('h2', '', learnHead)
   const learnClose = h('button', 'tool', learnHead)
   learnClose.type = 'button'
   const learnBody = h('div', 'learn-body', learn)
   const dock = h('div', 'dock', root)
+  const setTall = (tall: boolean): void => {
+    learn.classList.toggle('is-tall', tall)
+    grabber.setAttribute('aria-expanded', String(tall))
+  }
+  grabber.addEventListener('click', () => setTall(!learn.classList.contains('is-tall')))
+  learnHead.addEventListener('click', (e) => { if (e.target === learnHead || e.target === learnTitle) setTall(!learn.classList.contains('is-tall')) })
   const setLearn = (open: boolean, focus = true): void => {
+    if (!open) setTall(false)
     root.classList.toggle('has-learn', open)
     learn.classList.toggle('is-open', open)
     scrim.classList.toggle('is-open', open)
@@ -179,6 +189,7 @@ function boot(root: HTMLElement): void {
     themeBtn.title = `${s.theme}: ${s.themes[theme]}`
     learnTitle.textContent = s.learn
     learnClose.textContent = s.learnClose
+    grabber.setAttribute('aria-label', s.learnExpand)
     benchRoot.setAttribute('aria-label', s.regionBench)
     panelRoot.setAttribute('aria-label', s.regionPanel)
     chartsRoot.setAttribute('aria-label', s.regionCharts)

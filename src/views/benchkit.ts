@@ -106,7 +106,7 @@ export function opacityFromIntensity(intensity: number): number {
 }
 
 // ---- meter dial (drawing only) ----------------------------------------------------------------------
-export const DIAL_SPAN_DEG = 100
+export const DIAL_SPAN_DEG = 110
 export function needleAngleDeg(fraction: number): number {
   return (clamp(fraction, 0, 1) - 0.5) * DIAL_SPAN_DEG
 }
@@ -116,16 +116,19 @@ export interface Tick {
   label: string | null
 }
 const trimNum = (x: number): string => String(+x.toFixed(3))
-/** Scale marks for a range: 1-type ranges (0.1, 1, 10) have 10 divisions, 3-type ranges (0.3, 3, 30) have 6. */
+/** Scale marks for a range: 1-type ranges (0.1, 1, 10) have 10 divisions, 3-type ranges (0.3, 3, 30) have 6.
+ *  Each division carries 4 fine ticks (5 steps): 0.1 V on the 3 V range, 0.02 V on the 1 V range. */
 export function scaleTicks(range_V: number): Tick[] {
   const threeType = [0.3, 3, 30].includes(range_V)
   const n = threeType ? 6 : 10
   const ticks: Tick[] = []
-  for (let i = 0; i <= n * 2; i++) {
-    const major = i % 2 === 0
-    const f = i / (n * 2)
+  const sub = 5
+  for (let i = 0; i <= n * sub; i++) {
+    const major = i % sub === 0
+    const f = i / (n * sub)
+    const div = i / sub
     // label every second division (0, 2, 4 ...) so labels never crowd
-    ticks.push({ fraction: f, major, label: major && (i / 2) % 2 === 0 ? trimNum(f * range_V) : null })
+    ticks.push({ fraction: f, major, label: major && div % 2 === 0 ? trimNum(f * range_V) : null })
   }
   return ticks
 }

@@ -22,6 +22,8 @@ interface BenchStrings {
   lampOff: string
   lampOn: string
   lampWarming: string // "Warming up {pct} %"
+  lampPrompt: string
+  lampWarmingProgress: string // "Warming up… {pct} %"
   windowCover: string
   windowCoverValue: string // "{pct} % covered"
   beamIntensity: string
@@ -68,12 +70,14 @@ const en: BenchStrings = {
   lampOff: 'Off',
   lampOn: 'On',
   lampWarming: 'Warming up {pct} %',
+  lampPrompt: 'Switch on the mercury lamp (1)',
+  lampWarmingProgress: 'Warming up… {pct} %',
   windowCover: 'Window cover (12)',
   windowCoverValue: '{pct} % covered. Keeps room light out; the beam on the cell is unchanged.',
   beamIntensity: 'Beam intensity (filter)',
   beamIntensityValue: '{pct} % of the full beam (explore only; the real bench has no filter)',
   cathode: 'Cathode',
-  cathodes: { photocell: 'Photocell (K)', Cs: 'Caesium', Na: 'Sodium', K: 'Potassium', Zn: 'Zinc' },
+  cathodes: { photocell: 'Photocell (K layer, 1.9 eV)', Cs: 'Caesium (2.1 eV)', Na: 'Sodium (2.36 eV)', K: 'Pure potassium (2.29 eV)', Zn: 'Zinc (4.3 eV)' },
   stray: 'Stray light',
   dirty: 'Dirty photocell',
   roomLights: 'Room lights on',
@@ -100,11 +104,11 @@ const es: BenchStrings = {
     lens: { name: 'Lente con diafragma de rendija', short: 'Lente', info: 'Esta lente con diafragma de rendija elige una raya de la ventana y la enfoca sobre el cátodo.' },
     cell: { name: 'Fotocélula', short: 'Célula', info: 'La luz que llega al cátodo libera electrones, que cargan el condensador a través del ánodo en anillo.' },
   },
-  lines: { yellow: 'Amarillo', green: 'Verde', blue: 'Azul', violet: 'Violeta', uv: 'Ultravioleta' },
+  lines: { yellow: 'amarilla', green: 'verde', blue: 'azul', violet: 'violeta', uv: 'ultravioleta' },
   windowZoom: 'Vista ampliada de la ventana de emisión. El rectángulo es la abertura frente a la fotocélula.',
   windowZoomCap: 'Ventana de emisión, ampliada',
   cellAperture: 'Abertura de la célula',
-  lineNm: '{name} {nm} nm',
+  lineNm: 'raya {name} {nm} nm',
   aligned: 'Alineada: {line}',
   between: 'Entre rayas',
   armLabel: 'Posición del brazo giratorio',
@@ -114,12 +118,14 @@ const es: BenchStrings = {
   lampOff: 'Apagada',
   lampOn: 'Encendida',
   lampWarming: 'Calentando {pct} %',
+  lampPrompt: 'Enciende la lámpara de mercurio (1)',
+  lampWarmingProgress: 'Calentando… {pct} %',
   windowCover: 'Tapa de la ventana (12)',
   windowCoverValue: '{pct} % tapada. Evita que entre luz de la sala; el haz sobre la célula no cambia.',
   beamIntensity: 'Intensidad del haz (filtro)',
   beamIntensityValue: '{pct} % del haz completo (solo en Explorar; el montaje real no tiene filtro)',
   cathode: 'Cátodo',
-  cathodes: { photocell: 'Fotocélula (K)', Cs: 'Cesio', Na: 'Sodio', K: 'Potasio', Zn: 'Cinc' },
+  cathodes: { photocell: 'Fotocélula (capa de K, 1,9 eV)', Cs: 'Cesio (2,1 eV)', Na: 'Sodio (2,36 eV)', K: 'Potasio puro (2,29 eV)', Zn: 'Cinc (4,3 eV)' },
   stray: 'Luz parásita',
   dirty: 'Fotocélula sucia',
   roomLights: 'Luces de la sala encendidas',

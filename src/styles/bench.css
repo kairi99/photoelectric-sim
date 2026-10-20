@@ -17,7 +17,7 @@
 .bench-prism { fill: var(--stage-glass); stroke: var(--stage-ink-2); stroke-width: 1.2; stroke-linejoin: round; }
 .bench-mirror { stroke: var(--stage-ink); stroke-width: 3; stroke-linecap: round; }
 .bench-short { font: var(--text-caption); fill: var(--stage-ink-2); }
-.bench-arm { transform-origin: 180px 410px; transition: transform var(--dur-base) var(--ease-out); }
+.bench-arm { transform-origin: 180px 370px; transition: transform var(--dur-base) var(--ease-out); }
 .is-dragging .bench-arm { transition: none; }
 .bench-arm-bar { fill: var(--stage-metal); stroke: var(--stage-metal-hi); stroke-width: 1; }
 .bench-diaphragm { fill: var(--stage-black); stroke: var(--stage-metal-hi); stroke-width: 1; }
@@ -31,13 +31,19 @@
 .bench-arm-hit { cursor: grab; touch-action: none; }
 .bench-badge { cursor: pointer; outline: none; }
 .bench-badge-bg { fill: var(--stage-plate); stroke: var(--stage-ink); stroke-width: 1.2; }
-.bench-badge-num { font: var(--text-caption); fill: var(--stage-ink); pointer-events: none; }
+.bench-badge-num { font: var(--text-footnote); fill: var(--stage-ink); pointer-events: none; }
 .bench-badge:hover .bench-badge-bg, .bench-badge[aria-expanded='true'] .bench-badge-bg { fill: var(--accent-fill); }
 .bench-badge:focus-visible .bench-badge-bg { stroke: var(--accent); stroke-width: 3; }
 .bench-badge[aria-expanded='true'] .bench-badge-num { fill: var(--on-accent); }
 
+.bench-prompt { cursor: pointer; outline: none; }
+.bench-prompt-hit { fill: transparent; stroke: var(--stage-ink-2); stroke-width: var(--stroke-hair); }
+.bench-prompt-text { font: var(--text-callout); fill: var(--stage-ink-2); pointer-events: none; }
+.bench-prompt:hover .bench-prompt-hit { fill: var(--stage-aperture); }
+.bench-prompt:focus-visible .bench-prompt-hit { stroke: var(--accent); stroke-width: 3; }
+.bench-prompt-warm { font-variant-numeric: tabular-nums; }
 .bench-photon-lbl { font: var(--text-footnote); fill: var(--stage-ink-2); }
-.bench-photon-val { font: 600 22px/26px var(--font); fill: var(--stage-ink); font-variant-numeric: tabular-nums; }
+.bench-photon-val { font: var(--text-value); fill: var(--stage-ink); font-variant-numeric: tabular-nums; }
 
 .bench-inset { margin: 0; background: var(--stage-plate); border-radius: var(--radius-l); padding: var(--space-2) var(--space-2) var(--space-3); }
 .bench-inset-svg { display: block; width: 100%; height: auto; max-width: 560px; margin-inline: auto; touch-action: pan-y; cursor: ew-resize; }

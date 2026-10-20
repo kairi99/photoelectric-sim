@@ -11,7 +11,7 @@ import {
   opacityFromIntensity, pointerAngleDeg, q2, svgEl, textSetter,
 } from './benchkit.ts'
 
-const PIVOT = { x: 180, y: 410 }
+const PIVOT = { x: 180, y: 370 }
 const R_WINDOW = 150
 const R_LENS = 118
 const R_CELL = 80
@@ -43,7 +43,7 @@ export const mountBench: MountView = (root, ctx): View => {
   const stage = htmlEl('div', { class: 'bench-stage' }, wrap)
 
   // ---------------------------------------------------------------- main SVG
-  const svg = svgEl('svg', { viewBox: '0 0 360 432', class: 'bench-svg', role: 'img' }, stage)
+  const svg = svgEl('svg', { viewBox: '0 8 360 376', class: 'bench-svg', role: 'img' }, stage)
   relabelers.push(() => svg.setAttribute('aria-label', S().figure))
   const defs = svgEl('defs', {}, svg)
   const grad = svgEl('radialGradient', { id: `${id}-glow` }, defs)
@@ -102,7 +102,7 @@ export const mountBench: MountView = (root, ctx): View => {
   const shortLabels: Array<[PartKey, number, number]> = [['lamp', 31, 106], ['condenser', 80, 106], ['slit', 118, 106], ['imaging', 158, 106], ['prism', 207, 106], ['mirror', 326, 64]]
   const shortEls: Array<[PartKey, SVGTextElement]> = shortLabels.map(([k, x, y]) => [k, svgEl('text', { x, y, class: 'bench-short', 'text-anchor': 'middle' }, svg)])
   relabelers.push(() => { for (const [k, el] of shortEls) el.textContent = S().parts[k].short })
-  const winLabel = svgEl('text', { x: 326, y: 326, class: 'bench-short', 'text-anchor': 'middle' }, svg)
+  const winLabel = svgEl('text', { x: 330, y: 286, class: 'bench-short', 'text-anchor': 'middle' }, svg)
   relabelers.push(() => { winLabel.textContent = S().parts.window.short })
 
   // Swivelling arm group (rotates as a whole)
@@ -151,8 +151,8 @@ export const mountBench: MountView = (root, ctx): View => {
   }
   const makeBadge = (key: PartKey, num: string, x: number, y: number): SVGGElement => {
     const g = svgEl('g', { class: 'bench-badge', role: 'button', tabindex: 0, transform: `translate(${x} ${y})`, 'aria-expanded': 'false' }, svg)
-    svgEl('circle', { r: 22, class: 'bench-hit-fill' }, g)
-    svgEl('circle', { r: 10, class: 'bench-badge-bg' }, g)
+    svgEl('circle', { r: 26, class: 'bench-hit-fill' }, g)
+    svgEl('circle', { r: 12, class: 'bench-badge-bg' }, g)
     const t = svgEl('text', { class: 'bench-badge-num', 'text-anchor': 'middle', y: 4 }, g)
     t.textContent = num
     listen(g, 'click', () => showInfo(openKey === key ? null : key))
@@ -164,7 +164,7 @@ export const mountBench: MountView = (root, ctx): View => {
   }
   makeBadge('lamp', '1', 30, 30); makeBadge('condenser', '3', 80, 30); makeBadge('slit', '4', 118, 30)
   makeBadge('imaging', '5', 158, 30); makeBadge('prism', '6', 207, 30); makeBadge('mirror', '7', 290, 30)
-  const winBadge = makeBadge('window', '12', 326, 300)
+  const winBadge = makeBadge('window', '12', 330, 252)
   void winBadge
   const armBadges: Array<[SVGGElement, number, number]> = [
     [makeBadge('lens', '10', 0, 0), R_LENS, 26], [makeBadge('cell', '11', 0, 0), R_CELL, 28], [makeBadge('arm', '9', 0, 0), R_HANDLE - 6, 30],
@@ -214,7 +214,7 @@ export const mountBench: MountView = (root, ctx): View => {
 
   // ---------------------------------------------------------------- inset: emission window, enlarged
   const insetBox = htmlEl('figure', { class: 'bench-inset' }, wrap)
-  const insetSvg = svgEl('svg', { viewBox: '0 0 360 92', class: 'bench-inset-svg', role: 'img' }, insetBox as unknown as Element)
+  const insetSvg = svgEl('svg', { viewBox: '0 0 360 100', class: 'bench-inset-svg', role: 'img' }, insetBox as unknown as Element)
   insetBox.append(insetSvg)
   const insetCap = htmlEl('figcaption', {}, insetBox)
   relabelers.push(() => {
@@ -322,6 +322,21 @@ export const mountBench: MountView = (root, ctx): View => {
   const setDirtyChk = mkToggle('dirty', 'only-explore', (v) => a.setOverrides({ dirty: v }), () => S().dirty)
   const setRoomChk = mkToggle('roomLights', 'only-lab', (v) => a.setRoomLights(v), () => S().roomLights)
 
+  // Lamp prompt: fills the empty band of the stage while the lamp is off (a button), then shows warm-up progress.
+  const promptG = svgEl('g', { class: 'bench-prompt', role: 'button', tabindex: 0, transform: 'translate(180 140)' }, svg)
+  svgEl('rect', { x: -150, y: -24, width: 300, height: 48, rx: 24, class: 'bench-prompt-hit' }, promptG)
+  const promptText = svgEl('text', { y: 5, 'text-anchor': 'middle', class: 'bench-prompt-text' }, promptG)
+  const warmText = svgEl('text', { x: 180, y: 145, 'text-anchor': 'middle', class: 'bench-prompt-text bench-prompt-warm', 'aria-hidden': 'true' }, svg)
+  const setPromptText = textSetter(promptText)
+  const setWarmText = textSetter(warmText)
+  const setPromptShown = flagSetter(promptG, 'hidden')
+  const setWarmShown = flagSetter(warmText, 'hidden')
+  relabelers.push(() => { promptG.setAttribute('aria-label', S().lampPrompt) })
+  listen(promptG, 'click', () => a.setLamp(true))
+  listen(promptG, 'keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); a.setLamp(true) }
+  })
+
   // Explore overlay: photon energy, placed on the stage
   const photonG = svgEl('g', { class: 'bench-photon only-explore' }, svg)
   const photonLbl = svgEl('text', { x: 16, y: 168, class: 'bench-photon-lbl' }, photonG)
@@ -345,6 +360,7 @@ export const mountBench: MountView = (root, ctx): View => {
   const setLampChecked = attrSetter(lampBtn, 'aria-checked')
   const setLampStatus = textSetter(lampStatus)
   const setLampWarm = classSetter(lampCtl, 'is-warming')
+  controls.prepend(lampCtl)
   const setCathodeVal = (() => { let l = ''; return (v: string) => { if (v !== l) { l = v; catSel.value = v } } })()
   const setAlignedCls = classSetter(alignedPill, 'is-aligned')
   let builtMode: Mode | null = null
@@ -425,6 +441,10 @@ export const mountBench: MountView = (root, ctx): View => {
     setLampChecked(String(r.lampOn))
     const warming = r.lampOn && r.lampBrightness < 1
     setLampWarm(warming)
+    setPromptText(s.lampPrompt)
+    setPromptShown(r.lampOn)
+    setWarmShown(!warming)
+    setWarmText(fill(s.lampWarmingProgress, { pct: Math.floor(r.lampBrightness * 100) }))
     setLampStatus(!r.lampOn ? s.lampOff : warming ? fill(s.lampWarming, { pct: Math.floor(r.lampBrightness * 100) }) : s.lampOn)
     const dim = Math.round(a.windowCover * 100)
     setDimVal(dim)

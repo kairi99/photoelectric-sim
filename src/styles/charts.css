@@ -27,7 +27,7 @@
 }
 .ch-i {
   display: grid; place-items: center; width: 22px; height: 22px; border-radius: var(--radius-full);
-  border: 1.5px solid var(--accent); color: var(--accent); font: italic 600 13px/1 Georgia, serif;
+  border: 1.5px solid var(--accent); color: var(--accent); font: var(--text-footnote); font-style: italic; font-weight: 600; font-family: Georgia, serif; line-height: 1;
 }
 .ch-rule { margin: 0; font: var(--text-callout); font-weight: 600; }
 .ch-infotext { margin: 0; font: var(--text-footnote); color: var(--label-2); }

@@ -37,11 +37,11 @@
 }
 .tbl-icon {
   min-width: var(--touch); min-height: var(--touch); border: none; background: transparent; cursor: pointer;
-  color: var(--label-2); font-size: 22px; border-radius: var(--radius-full); touch-action: manipulation;
+  color: var(--label-2); font: var(--text-value); border-radius: var(--radius-full); touch-action: manipulation;
 }
 .tbl-icon:hover { color: var(--danger); background: var(--fill); }
 .tbl-empty { margin: 0; color: var(--label-2); font: var(--text-footnote); }
 .tbl-foot { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .tbl-confirm { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .tbl-confirm-text { font: var(--text-callout); margin-right: var(--space-2); }
-@media (max-width: 420px) { .tbl-table th, .tbl-table td { padding-inline: var(--space-1); font-size: 14px; } }
+@media (max-width: 420px) { .tbl-table th, .tbl-table td { padding-inline: var(--space-1); font: var(--text-footnote); } }
