@@ -20,8 +20,6 @@ export const mountTable: MountView = (root, ctx): View => {
   const app = ctx.apparatus
   const S = () => strings[ctx.lang()]
   let confirming = false
-  let sig = ''
-  let mode = app.mode
   let notice: { kind: 'error' | 'warn'; text: () => string } | null = null
 
   const wrap = el('section', 'tbl')
@@ -110,7 +108,7 @@ export const mountTable: MountView = (root, ctx): View => {
   clearBtn.addEventListener('click', () => { confirming = true; applyConfirm(); yesBtn.focus() })
   noBtn.addEventListener('click', () => { confirming = false; applyConfirm(); clearBtn.focus() })
   yesBtn.addEventListener('click', () => {
-    while (app.measurements.length) app.removeMeasurement(app.measurements.length - 1)
+    app.clearMeasurements()
     confirming = false
     notice = null
     renderNotice()
@@ -205,14 +203,14 @@ export const mountTable: MountView = (root, ctx): View => {
 
   relabel()
 
+  const offs = [
+    app.on('measurements', () => { notice = null; renderNotice(); rebuild() }),
+    app.on('mode', () => { notice = null; applyMode(); renderNotice(); rebuild() }),
+  ]
+
   return {
-    update() {
-      if (app.mode !== mode) { mode = app.mode; notice = null; applyMode(); renderNotice() }
-      const ms = app.measurements
-      const next = ms.map((m) => `${m.lineId}|${m.U0_V}|${m.t_wait_s}|${m.settled}`).join(';')
-      if (next !== sig) { sig = next; rebuild() }
-    },
-    relabel() { sig = ''; relabel(); sig = app.measurements.map((m) => `${m.lineId}|${m.U0_V}|${m.t_wait_s}|${m.settled}`).join(';') },
-    destroy() { wrap.remove() },
+    update() { /* event-driven */ },
+    relabel,
+    destroy() { for (const off of offs) off(); wrap.remove() },
   }
 }

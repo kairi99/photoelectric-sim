@@ -4,14 +4,22 @@ const en = {
   language: 'Language',
   theme: 'Theme',
   themes: { auto: 'Auto', light: 'Light', dark: 'Dark' },
-  regions: {
-    bench: 'Bench',
-    panel: 'Panel',
-    charts: 'Charts',
-    table: 'Data table',
-    learn: 'Learn',
+  mode: 'Mode',
+  modes: { explore: 'Explore', lab: 'Lab' },
+  modeHint: {
+    explore: 'Ideal instrument: you can see the true voltage and change the hidden physics.',
+    lab: 'Realistic instrument: noise, stray light and a meter you must read yourself.',
   },
-  placeholder: 'Coming soon.',
+  learn: 'Learn',
+  learnClose: 'Close',
+  learnEmpty: 'Guided tasks and explanations will appear here.',
+  help: 'Help',
+  helpLabel: 'Open the theory sheet',
+  helpHref: 'help/index.html',
+  regionBench: 'Bench',
+  regionPanel: 'Instrument panel',
+  regionCharts: 'Charts',
+  regionTable: 'Data table',
   lines: { yellow: 'Yellow 578 nm', green: 'Green 546 nm', blue: 'Blue 436 nm', violet: 'Violet 405 nm' },
 }
 type Dict = typeof en
@@ -20,14 +28,22 @@ const es: Dict = {
   language: 'Idioma',
   theme: 'Tema',
   themes: { auto: 'Auto', light: 'Claro', dark: 'Oscuro' },
-  regions: {
-    bench: 'Mesa',
-    panel: 'Panel',
-    charts: 'Gráficas',
-    table: 'Tabla de datos',
-    learn: 'Aprende',
+  mode: 'Modo',
+  modes: { explore: 'Explorar', lab: 'Laboratorio' },
+  modeHint: {
+    explore: 'Instrumento ideal: ves la tensión real y puedes cambiar la física oculta.',
+    lab: 'Instrumento realista: ruido, luz parásita y un medidor que debes leer tú.',
   },
-  placeholder: 'Próximamente.',
+  learn: 'Aprende',
+  learnClose: 'Cerrar',
+  learnEmpty: 'Aquí aparecerán las tareas guiadas y las explicaciones.',
+  help: 'Ayuda',
+  helpLabel: 'Abrir la hoja de teoría',
+  helpHref: 'help/es.html',
+  regionBench: 'Mesa',
+  regionPanel: 'Panel de instrumentos',
+  regionCharts: 'Gráficas',
+  regionTable: 'Tabla de datos',
   lines: { yellow: 'Amarillo 578 nm', green: 'Verde 546 nm', blue: 'Azul 436 nm', violet: 'Violeta 405 nm' },
 }
 
@@ -46,3 +62,15 @@ export function saveLang(lang: Lang): void {
   try { localStorage.setItem(KEY, lang) } catch { /* ignore */ }
 }
 export function t(lang: Lang): Dict { return dictionaries[lang] }
+
+const MODE_KEY = 'photoelectric-mode'
+export function loadMode(): 'explore' | 'lab' {
+  try {
+    const v = localStorage.getItem(MODE_KEY)
+    if (v === 'explore' || v === 'lab') return v
+  } catch { /* ignore */ }
+  return 'explore'
+}
+export function saveMode(m: 'explore' | 'lab'): void {
+  try { localStorage.setItem(MODE_KEY, m) } catch { /* ignore */ }
+}

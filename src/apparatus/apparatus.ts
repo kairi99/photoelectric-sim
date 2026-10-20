@@ -131,6 +131,9 @@ export interface ApparatusEvents {
   release: { t_s: number }
   record: Measurement
   settled: { t_s: number; U_V: number }
+  /** Fired after a measurement is recorded, removed, or the list is cleared (also by reset). */
+  measurements: undefined
+  mode: Mode
 }
 type Listener<K extends keyof ApparatusEvents> = (p: ApparatusEvents[K]) => void
 
@@ -160,6 +163,8 @@ export class Apparatus {
   releaseTime_s = 0
   measurements: Measurement[] = []
   procedureLog: LogEntry[] = []
+  /** True once the key has been released at least once since the last reset. */
+  hasReleased = false
 
   private lampWarm_s = 0
   private brightness = 0
@@ -176,7 +181,7 @@ export class Apparatus {
   private history: HistoryPoint[] = []
   private histEvery_s = CHUNK_s
   private histNext_s = 0
-  private listeners: { [K in keyof ApparatusEvents]: Listener<K>[] } = { change: [], release: [], record: [], settled: [] }
+  private listeners: { [K in keyof ApparatusEvents]: Listener<K>[] } = { change: [], release: [], record: [], settled: [], measurements: [], mode: [] }
 
   constructor(opts: ApparatusOptions = {}) {
     this.mode = opts.mode ?? 'explore'
@@ -224,11 +229,14 @@ export class Apparatus {
     this.U_V = 0
     this.meterValue_V = 0
     this.needle_V = 0
+    const hadMeasurements = this.measurements.length > 0
     this.measurements = []
+    this.hasReleased = false
     this.procedureLog = []
     this.lastAligned = null
     this.rng = mulberry32(this.seed)
     this.resetRelease()
+    if (hadMeasurements) this.emit('measurements', undefined)
     this.changed()
   }
 
@@ -245,6 +253,7 @@ export class Apparatus {
   setMode(mode: Mode): void {
     this.mode = mode
     this.reset()
+    this.emit('mode', mode)
   }
 
   serialize(): Controls {
@@ -346,6 +355,7 @@ export class Apparatus {
     if (!this.keyPressed) return
     this.keyPressed = false
     this.releaseTime_s = this.clock_s
+    this.hasReleased = true
     this.resetRelease()
     this.log('released')
     this.emit('release', { t_s: this.clock_s })
@@ -591,12 +601,20 @@ export class Apparatus {
     this.measurements.push(m)
     this.log('recorded', v)
     this.emit('record', m)
+    this.emit('measurements', undefined)
     this.changed()
     return { ok: true, measurement: m }
   }
   removeMeasurement(i: number): void {
     if (i < 0 || i >= this.measurements.length) return
     this.measurements.splice(i, 1)
+    this.emit('measurements', undefined)
+    this.changed()
+  }
+  clearMeasurements(): void {
+    if (this.measurements.length === 0) return
+    this.measurements = []
+    this.emit('measurements', undefined)
     this.changed()
   }
   /** U0 vs nu fit over aligned measurements; needs >= 2 distinct lines. */

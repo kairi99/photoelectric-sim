@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hoja de teoría — constante de Planck con el efecto fotoeléctrico</title>
+<link rel="stylesheet" href="./help.css">
+</head>
+<body>
+<div class="bar"><a class="pill accent" href="../index.html">Volver a la simulación</a><nav class="pills" aria-label="Language"><a class="pill" href="index.html" hreflang="en">English</a></nav></div>
+<main>
+<h1>La constante de Planck con el efecto fotoeléctrico</h1>
+<p class="lede">Una guía breve para acompañar la simulación: la física detrás de las lecturas, las piezas del instrumento y las formas habituales en que una medida sale mal.</p>
+<section><h2>El efecto y el fotón</h2><p>La luz que cae sobre un metal puede arrancarle electrones. Las ondas clásicas predecirían que un haz más intenso, de cualquier color, bastaría. Lo que se observa es distinto: por debajo de cierta frecuencia no sale nada, por muy intensa que sea la luz, y por encima los electrones salen con una energía que depende del color, no de la intensidad.</p><p>Einstein lo explicó tratando la luz como un chorro de cuantos. Cada fotón lleva una energía que fija su frecuencia:</p><div class="eq">E = h·ν</div><p>donde <em>h</em> es la constante de Planck. Un fotón entrega toda su energía a un electrón, o ninguna.</p></section><section><h2>Balance de energía</h2><p>Para salir del metal, un electrón debe pagar un precio fijo, la función de trabajo <em>W</em>. Lo que sobra se convierte en movimiento:</p><div class="eq">E_cin = h·ν − W</div><p>Los electrones más rápidos son los que no pierden nada al salir. Más intensidad solo significa más electrones, no más veloces.</p></section><section><h2>La tensión límite U<sub>0</sub></h2><p>En este experimento los electrones que llegan al ánodo en anillo cargan un condensador pequeño (100 pF). La tensión creciente frena a los siguientes electrones, como una cuesta cada vez más empinada. La carga se ralentiza y se detiene cuando ni los electrones más rápidos pueden subir. Esa tensión es la tensión límite <em>U</em><sub>0</sub>, y el condensador se queda ahí porque la corriente que le llega ha caído a cero. Siempre hay una pequeña fuga que descarga algo, así que en la práctica la lectura se aplana en una meseta.</p><p>En ese punto la energía cinética del electrón se ha gastado justo en la subida:</p><div class="eq">e·U₀ = h·ν − W</div></section><section><h2>Por qué la pendiente da h</h2><p>Mide U<sub>0</sub> para varias rayas espectrales y represéntala frente a la frecuencia. La relación anterior es una recta:</p><div class="eq">ΔU₀ / Δν = h / e</div><p>así que <em>h</em> es la pendiente multiplicada por la carga elemental <em>e</em>. Un resultado típico de clase queda a pocos por ciento del valor aceptado, 6,626 × 10⁻³⁴ J·s.</p></section><section><h2>La ordenada no es la función de trabajo del cátodo</h2><p>Es tentador leer la ordenada en el origen como la función de trabajo del cátodo de potasio. No lo es. Cátodo y ánodo están unidos por el circuito, y sus niveles de Fermi se igualan. La superficie del ánodo es otro material con su propia función de trabajo <em>W</em><sub>A</sub>, y el electrón debe superar la barrera del ánodo más el desplazamiento <em>e</em>·<em>U</em><sub>0</sub> del condensador:</p><div class="eq">h·ν = W_A + e·U₀</div><p>La ordenada mide por tanto <em>W</em><sub>A</sub>, un valor que depende de la cara cristalina y del gas adsorbido y es difícil de conocer. La función de trabajo del propio cátodo no aparece ni en la pendiente ni en la ordenada.</p></section><figure><svg viewBox="0 0 580 300" role="img" aria-labelledby="dg-t dg-d">
+<title id="dg-t">Diagrama de energía de cátodo y ánodo</title><desc id="dg-d">Dos pozos de potencial comparten un nivel de Fermi. El nivel de vacío del ánodo es más alto que el del cátodo por la diferencia de funciones de trabajo. Un fotón sube un electrón desde el nivel de Fermi hasta el nivel de vacío del ánodo más e por U cero.</desc>
+<line class="d-axis" x1="30" y1="270" x2="30" y2="20"/><polygon class="d-head" style="fill:var(--label-2)" points="30,12 25,24 35,24"/>
+<text class="d-t2" x="38" y="22">Energía</text>
+<rect class="d-well" x="70" y="170" width="150" height="100" rx="4"/>
+<rect class="d-well" x="300" y="170" width="150" height="100" rx="4"/>
+<text class="d-t" x="145" y="224" text-anchor="middle">Cátodo (K)</text>
+<text class="d-t" x="375" y="224" text-anchor="middle">Ánodo (anillo)</text>
+<line class="d-fermi" x1="60" y1="170" x2="460" y2="170"/>
+<text class="d-ac" x="464" y="162">E<tspan font-size="10" dy="3">F</tspan></text>
+<line class="d-vac" x1="70" y1="120" x2="220" y2="120"/>
+<text class="d-t2" x="145" y="112" text-anchor="middle">nivel de vacío, cátodo</text>
+<line class="d-vac" x1="300" y1="80" x2="450" y2="80"/>
+<text class="d-t2" x="375" y="72" text-anchor="middle">nivel de vacío, ánodo</text>
+<line class="d-vac" style="stroke-dasharray:4 3" x1="300" y1="44" x2="450" y2="44"/>
+<text class="d-t2" x="375" y="36" text-anchor="middle">nivel que debe alcanzar el electrón</text>
+<line class="d-axis" x1="238" y1="170" x2="238" y2="124"/><line class="d-axis" x1="232" y1="170" x2="244" y2="170"/><line class="d-axis" x1="232" y1="120" x2="244" y2="120"/>
+<text class="d-t2" x="246" y="150">W<tspan font-size="10" dy="3">K</tspan></text>
+<line class="d-axis" x1="282" y1="170" x2="282" y2="84"/><line class="d-axis" x1="276" y1="80" x2="288" y2="80"/>
+<text class="d-t2" x="256" y="130" text-anchor="end"></text>
+<text class="d-t2" x="290" y="130">W<tspan font-size="10" dy="3">A</tspan></text>
+<line class="d-off" x1="468" y1="80" x2="468" y2="48"/><polygon class="d-head-r" points="468,42 463,54 473,54"/>
+<text class="d-ac" style="fill:var(--danger)" x="476" y="66">e·U<tspan font-size="10" dy="3">0</tspan></text>
+<line class="d-arrow" x1="548" y1="170" x2="548" y2="52"/><polygon class="d-head" points="548,44 543,56 553,56"/>
+<text class="d-t" x="548" y="190" text-anchor="middle" style="fill:var(--phys-violet)">hν</text>
+</svg><figcaption>Los niveles de Fermi están alineados. La energía del fotón hν debe cubrir la barrera del ánodo W_A más el desplazamiento del condensador e·U₀.</figcaption></figure>
+<section><h2>El aparato</h2><p>Los números coinciden con las insignias de la mesa en la simulación.</p><ul class="parts"><li><b>1</b><span>Lámpara de mercurio</span></li><li><b>2</b><span>Regulador</span></li><li><b>3</b><span>Lente convergente</span></li><li><b>4</b><span>Rendija</span></li><li><b>5</b><span>Lente de imagen</span></li><li><b>6</b><span>Prisma de visión directa</span></li><li><b>7</b><span>Espejo</span></li><li><b>8.1</b><span>Toma BNC (cátodo)</span></li><li><b>8.2</b><span>Tomas de 4 mm (ánodo en anillo)</span></li><li><b>9</b><span>Brazo giratorio con guía de rosca</span></li><li><b>10</b><span>Lente convergente con diafragma de rendija</span></li><li><b>11</b><span>Fotocélula</span></li><li><b>12</b><span>Ventana de emisión con regulador de brillo</span></li></ul><p>Eléctricamente, la célula alimenta un condensador de 100 pF. Un amplificador electrométrico permite que el multímetro analógico (rango de 3 V CC) lea la tensión del condensador sin descargarlo, y un pulsador normalmente abierto descarga el condensador antes de cada lectura.</p></section>
+<section><h2>Procedimiento</h2><ol><li>Oscurece un poco la sala y pon el multímetro en 3 V CC.</li><li>Gira el brazo giratorio hasta que la raya elegida caiga sobre la fotocélula. Si la sala está demasiado iluminada, cierra el regulador sobre la ventana.</li><li>Mantén pulsada la tecla hasta que el medidor marque cero, para que el condensador quede vacío.</li><li>Suelta la tecla y espera a que la tensión se aplane, entre medio minuto y un minuto. Anota U₀.</li><li>Repite con cada raya: amarilla, verde, azul y violeta.</li><li>Representa U₀ frente a la frecuencia, ajusta una recta y multiplica la pendiente por e.</li></ol></section>
+<section><h2>Fuentes de error</h2><ul><li><b>Luz parásita.</b> El polvo o las huellas en la óptica dispersan luz de otros colores sobre la célula. Las rayas de baja frecuencia, que deberían dar un U₀ pequeño, salen demasiado altas.</li><li><b>Fugas.</b> Una célula sucia deja pasar carga del ánodo al cátodo, y la meseta queda más baja que el U₀ real.</li><li><b>Leer demasiado pronto.</b> El condensador aún se está cargando. Espera a que la aguja deje de moverse.</li><li><b>Perturbar el montaje.</b> El condensador es sensible a la inducción: evita moverte o tocar el equipo mientras mides.</li></ul></section>
+<section><h2>Glosario</h2><dl><dt>Fotón</dt><dd>Un cuanto de luz con energía h·ν.</dd><dt>Función de trabajo (W)</dt><dd>La energía mínima necesaria para arrancar un electrón de una superficie.</dd><dt>Tensión límite (U₀)</dt><dd>La tensión de frenado a la que la fotocorriente se anula.</dd><dt>Nivel de Fermi</dt><dd>La mayor energía ocupada por electrones en un metal en reposo.</dd><dt>Raya espectral</dt><dd>Un color estrecho de la lámpara de mercurio, con una sola longitud de onda.</dd><dt>Amplificador electrométrico</dt><dd>Un buffer de resistencia de entrada muy alta que permite leer un condensador pequeño sin cargarlo.</dd></dl></section>
+<footer>Basado en la hoja de LD Didactic P6.1.4.1; sin afiliación.</footer>
+</main>
+</body>
+</html>

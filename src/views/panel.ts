@@ -159,16 +159,12 @@ export const mountPanel: MountView = (root, ctx): View => {
 
   // ---------------------------------------------------------------- update
   let builtMode: string | null = null
-  let hasReleased = false
-  let lastClock = 0
-  cleanups.push(a.on('release', () => { hasReleased = true }))
 
   const setBadgeShown = setBadgeKind
   const update = (): void => {
     const r = a.readout()
     if (r.mode !== builtMode) { builtMode = r.mode; wrap.dataset.mode = r.mode }
-    if (r.clock_s < lastClock) hasReleased = false
-    lastClock = r.clock_s
+    const hasReleased = a.hasReleased
     const s = S()
 
     if (r.meterRange !== builtRange) { builtRange = r.meterRange; buildTicks(r.meterRange); wrap.classList.toggle('meter-off', r.meterRange === 'OFF') }

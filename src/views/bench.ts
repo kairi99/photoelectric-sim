@@ -22,7 +22,7 @@ const INSET = { x0: 20, w: 320 }
 /** UI preset for the explore stray-light toggle (fraction of the line power scattered onto the cell). */
 const STRAY_PRESET = 0.02
 const LINE_IDS = HG_LINES.map((l) => l.id)
-const lineVar = (id: HgLineId): string => `var(--bench-${id})`
+const lineVar = (id: HgLineId): string => `var(--stage-${id})`
 const CATHODE_IDS: CathodeId[] = ['photocell', 'Cs', 'Na', 'K', 'Zn']
 type PartKey = keyof (typeof strings.en)['parts']
 
@@ -47,8 +47,8 @@ export const mountBench: MountView = (root, ctx): View => {
   relabelers.push(() => svg.setAttribute('aria-label', S().figure))
   const defs = svgEl('defs', {}, svg)
   const grad = svgEl('radialGradient', { id: `${id}-glow` }, defs)
-  svgEl('stop', { offset: '0', 'stop-color': 'var(--bench-glow)', 'stop-opacity': '0.95' }, grad)
-  svgEl('stop', { offset: '1', 'stop-color': 'var(--bench-glow)', 'stop-opacity': '0' }, grad)
+  svgEl('stop', { offset: '0', 'stop-color': 'var(--stage-glow)', 'stop-opacity': '0.95' }, grad)
+  svgEl('stop', { offset: '1', 'stop-color': 'var(--stage-glow)', 'stop-opacity': '0' }, grad)
 
   // Optical beam up to the prism (white)
   const beam = svgEl('path', {
@@ -102,7 +102,7 @@ export const mountBench: MountView = (root, ctx): View => {
   const shortLabels: Array<[PartKey, number, number]> = [['lamp', 31, 106], ['condenser', 80, 106], ['slit', 118, 106], ['imaging', 158, 106], ['prism', 207, 106], ['mirror', 326, 64]]
   const shortEls: Array<[PartKey, SVGTextElement]> = shortLabels.map(([k, x, y]) => [k, svgEl('text', { x, y, class: 'bench-short', 'text-anchor': 'middle' }, svg)])
   relabelers.push(() => { for (const [k, el] of shortEls) el.textContent = S().parts[k].short })
-  const winLabel = svgEl('text', { x: 180, y: 244, class: 'bench-short', 'text-anchor': 'middle' }, svg)
+  const winLabel = svgEl('text', { x: 326, y: 326, class: 'bench-short', 'text-anchor': 'middle' }, svg)
   relabelers.push(() => { winLabel.textContent = S().parts.window.short })
 
   // Swivelling arm group (rotates as a whole)
@@ -111,7 +111,7 @@ export const mountBench: MountView = (root, ctx): View => {
   svgEl('rect', { x: PIVOT.x - 3, y: PIVOT.y - R_WINDOW - 8, width: 6, height: R_WINDOW + 8, rx: 3, class: 'bench-arm-bar' }, armG)
   svgEl('ellipse', { cx: PIVOT.x, cy: PIVOT.y - R_LENS, rx: 16, ry: 5, class: 'bench-lens' }, armG)
   svgEl('rect', { x: PIVOT.x - 7, y: PIVOT.y - R_LENS - 3, width: 14, height: 6, class: 'bench-diaphragm' }, armG)
-  const cellGlow = svgEl('circle', { cx: PIVOT.x, cy: PIVOT.y - R_CELL, r: 24, fill: 'var(--bench-yellow)' }, armG)
+  const cellGlow = svgEl('circle', { cx: PIVOT.x, cy: PIVOT.y - R_CELL, r: 24, fill: 'var(--stage-yellow)' }, armG)
   const setCellGlow = attrSetter(cellGlow, 'opacity')
   const setCellFill = attrSetter(cellGlow, 'fill')
   svgEl('circle', { cx: PIVOT.x, cy: PIVOT.y - R_CELL, r: 13, class: 'bench-cell' }, armG)
@@ -385,7 +385,7 @@ export const mountBench: MountView = (root, ctx): View => {
     setApX(q2(INSET.x0 + r.armPosition * INSET.w - (2 * LINE_SIGMA * INSET.w)))
     setApLX(q2(clamp(INSET.x0 + r.armPosition * INSET.w, 60, 300)))
     const cellId = r.lineOnCell ?? 'none'
-    if (cellId !== lastCellId) { lastCellId = cellId; setCellFill(r.lineOnCell ? lineVar(r.lineOnCell) : 'var(--bench-glow)') }
+    if (cellId !== lastCellId) { lastCellId = cellId; setCellFill(r.lineOnCell ? lineVar(r.lineOnCell) : 'var(--stage-glow)') }
     setCellGlow(q2(Math.min(1, glow) * 0.55))
 
     // Slider and aligned label

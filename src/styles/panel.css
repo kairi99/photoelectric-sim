@@ -8,7 +8,7 @@
 .panel h3 { margin: 0; font: var(--text-headline); }
 .panel .ctl-help { margin: 0; font: var(--text-footnote); color: var(--label-2); }
 .panel[data-mode='lab'] .only-explore { display: none; }
-.panel [hidden] { display: none; }
+.panel [hidden] { display: none !important; }
 
 /* Dial */
 .dial { position: relative; }
@@ -51,10 +51,10 @@
 }
 .key-cap {
   display: grid; place-items: center; min-height: 80px; margin: var(--space-2); border-radius: var(--radius-m);
-  background: var(--accent-fill); color: var(--on-accent); box-shadow: 0 6px 0 rgba(0, 0, 0, 0.28); transform: translateY(-3px);
+  background: var(--accent-fill); color: var(--on-accent); box-shadow: 0 6px 0 var(--key-edge); transform: translateY(-3px);
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
-.key-btn.is-pressed .key-cap { transform: translateY(3px); box-shadow: 0 0 0 rgba(0, 0, 0, 0.28); }
+.key-btn.is-pressed .key-cap { transform: translateY(3px); box-shadow: 0 0 0 var(--key-edge); }
 .key-text { font: var(--text-headline); padding: 0 var(--space-3); }
 
 /* Amplifier */

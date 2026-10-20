@@ -1,0 +1,52 @@
+@import '../src/styles/tokens.css';
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--label); font: var(--text-body); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4); max-width: 46rem; margin-inline: auto;
+}
+.pill {
+  display: inline-grid; place-items: center; min-height: var(--touch); padding: 0 var(--space-4);
+  border-radius: var(--radius-full); background: var(--fill); color: var(--label); text-decoration: none; font: var(--text-callout);
+}
+.pill.accent { background: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
+.pills { display: flex; gap: var(--space-1); }
+main { max-width: 46rem; margin-inline: auto; padding: var(--space-2) var(--space-4) var(--space-7); }
+h1 { font: var(--text-title); margin: var(--space-4) 0 var(--space-2); }
+h2 { font: var(--text-headline); margin: var(--space-6) 0 var(--space-2); }
+p, li, dd { line-height: 1.55; }
+p { margin: 0 0 var(--space-3); }
+.lede { color: var(--label-2); }
+.eq {
+  margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); background: var(--surface); border-radius: var(--radius-m);
+  box-shadow: var(--shadow-1); font-family: var(--font-mono); font-size: 17px; overflow-x: auto; white-space: nowrap;
+}
+.note { padding: var(--space-3) var(--space-4); background: var(--surface); border-left: 3px solid var(--accent); border-radius: var(--radius-s); }
+ol, ul { padding-left: var(--space-5); margin: 0 0 var(--space-3); }
+li { margin-bottom: var(--space-1); }
+li::marker { color: var(--label-2); }
+.parts { list-style: none; padding: 0; display: grid; gap: var(--space-1) var(--space-4); grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.parts li { display: flex; gap: var(--space-2); margin: 0; }
+.parts b { flex: none; min-width: 2.2em; font-variant-numeric: tabular-nums; color: var(--accent); }
+dl { margin: 0; }
+dt { font-weight: 600; margin-top: var(--space-3); }
+dd { margin: 0; color: var(--label-2); }
+figure { margin: var(--space-4) 0; background: var(--surface); border-radius: var(--radius-l); box-shadow: var(--shadow-1); padding: var(--space-3); }
+figure svg { display: block; width: 100%; height: auto; max-width: 34rem; margin-inline: auto; }
+figcaption { font: var(--text-footnote); color: var(--label-2); margin-top: var(--space-2); }
+.d-axis, .d-fermi, .d-vac, .d-arrow { fill: none; stroke-linecap: round; }
+.d-axis { stroke: var(--label-2); stroke-width: 1.5; }
+.d-well { fill: var(--surface-2); stroke: var(--label-2); stroke-width: 1.5; }
+.d-fermi { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+.d-vac { stroke: var(--label); stroke-width: 2; }
+.d-arrow { stroke: var(--phys-violet); stroke-width: 2.5; }
+.d-off { fill: none; stroke: var(--danger); stroke-width: 2.5; }
+.d-head { fill: var(--phys-violet); stroke: none; }
+.d-head-r { fill: var(--danger); stroke: none; }
+.d-t { font: 500 13px/1 var(--font); fill: var(--label); }
+.d-t2 { font: 400 12px/1 var(--font); fill: var(--label-2); }
+.d-ac { fill: var(--accent); font: 600 13px/1 var(--font); }
+footer { margin-top: var(--space-7); font: var(--text-footnote); color: var(--label-2); }

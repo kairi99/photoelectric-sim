@@ -199,3 +199,46 @@ describe('device behaviour', () => {
     expect(b.getHistory()).toHaveLength(0)
   })
 })
+
+describe('measurement and mode events', () => {
+  it('fires measurements on record, remove and clear', () => {
+    const a = new Apparatus({ mode: 'explore' })
+    a.setRange(3)
+    let n = 0
+    a.on('measurements', () => n++)
+    a.record()
+    a.record()
+    expect(n).toBe(2)
+    a.removeMeasurement(0)
+    expect(n).toBe(3)
+    a.removeMeasurement(9)
+    expect(n).toBe(3)
+    a.clearMeasurements()
+    expect(a.measurements).toHaveLength(0)
+    expect(n).toBe(4)
+    a.clearMeasurements()
+    expect(n).toBe(4)
+  })
+
+  it('hasReleased is true after a release and false after reset', () => {
+    const a = new Apparatus()
+    expect(a.hasReleased).toBe(false)
+    a.pressKey()
+    expect(a.hasReleased).toBe(false)
+    a.releaseKey()
+    expect(a.hasReleased).toBe(true)
+    a.reset()
+    expect(a.hasReleased).toBe(false)
+  })
+
+  it('fires mode on setMode and resets measurements', () => {
+    const a = new Apparatus()
+    const seen: string[] = []
+    a.on('mode', (m) => seen.push(m))
+    a.setRange(3)
+    a.record()
+    a.setMode('lab')
+    expect(seen).toEqual(['lab'])
+    expect(a.measurements).toHaveLength(0)
+  })
+})
