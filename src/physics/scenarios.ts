@@ -14,7 +14,7 @@ export interface Scenario {
 
 export const IDEAL: Scenario = {
   name: 'ideal',
-  params: { stray_fraction: 0, R_cell_Ohm: 1e21, R_input_Ohm: 1e21 },
+  params: { stray_fraction: 0, R_cell_Ohm: 1e21, R_input_Ohm: 1e21, I_ref_A: 1e-9 }, // bright source: settles in ~1 min
   wait_s: Infinity,
 }
 

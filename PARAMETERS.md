@@ -34,3 +34,5 @@ Grid search over W_A, I_ref, violet relative power (kept at 0.6), stray fraction
 | violet 405 | 1.360 | 1.398 | 1.404 | 1.404 | 1.404 | 1.40 | +0.004 | 1.544 |
 
 Fitted h from the steady states = 5.97e-34 J s (intercept -1.34 V), against 5.91e-34 for the Table 1 fit. The slope deficit comes from leakage: the equilibrium deficit grows with U0, lowering violet (-0.14 V) more than yellow (-0.04 V). Stray light lifts the low-frequency plateaus slightly.
+
+| `IDEAL.I_ref_A` | 1e-9 | A | Explore-mode idealised bright source (10× the lab `I_REF_A`), chosen so the (1−U/U0)² approach reaches U0 within ~10 mV after 60 s; does not change any U0 | 2026-10-20 |
