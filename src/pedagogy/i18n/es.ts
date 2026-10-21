@@ -28,7 +28,7 @@ export const es: PedagogyDict = {
     openTask: 'Tarea',
     openTaskLabel: 'Abrir la tarjeta de la tarea',
     switchedMode: 'Esta tarea usa el modo {mode}. Se han borrado tus medidas.',
-    yourFit: 'Tu ajuste: h = {h} × 10⁻³⁴ J·s',
+    yourFit: 'Tu ajuste: h = ({h} ± {s}) × 10⁻³⁴ J·s',
     noFit: 'Aún no hay ajuste.',
     replayTour: 'Repetir el recorrido',
     helpLink: 'Abrir la hoja de teoría',
@@ -105,6 +105,8 @@ export const es: PedagogyDict = {
     findViolet: 'Gira el brazo hasta la línea violeta y lee antes su hν en la mesa.',
     fitOff: 'Tu h se aleja mucho. Repite la medida del punto más alejado de la recta.',
     speedUp: 'Acelera el reloj con ×5 o ×20.',
+    measureAgain: 'Mide la misma línea otra vez: mantén pulsado el pulsador hasta que el multímetro marque 0, suéltalo, espera la meseta y registra.',
+    seeSpread: 'Mira la tabla: el resumen por línea muestra la media, s y el error estándar.',
   },
   task: {
     'find-line': {
@@ -127,6 +129,16 @@ export const es: PedagogyDict = {
       explain: 'Cada electrón sale con la energía h·ν menos lo que gasta en escapar, y eso es lo que puede gastar subiendo la tensión de frenado: e·U0 = h·ν − W. Un fotón amarillo trae {Ey} eV, pero parte se pierde en la función de trabajo, así que U0 ≈ 0,6 V y no 2,1 V. Esta W no es la del potasio, sino la del ánodo, como verás en la tarea de Planck.',
       teacher: 'Valor del guion: 0,59 V; la meseta simulada en laboratorio está en docs/teacher-key.md. La tolerancia de ±0,05 V admite una lectura honesta de la aguja (~0,02 V). La lectura solo cuenta si el condensador se descargó después de colocar la línea. Error típico: 2,1 V, igualando e·U0 con h·ν sin restar W. Recordad no tocar el montaje durante la medida.',
     },
+    'repeat-spread': {
+      title: 'Repetir y dispersión',
+      concept: 'Error aleatorio y sistemático',
+      predict: 'Mides la misma línea cuatro veces, descargando el condensador cada vez. ¿Leerás siempre el mismo valor?',
+      options: ['Sí, exactamente el mismo', 'Parecido, pero no idéntico', 'No, valores totalmente distintos'],
+      act: 'En modo Laboratorio elige una línea (por ejemplo la verde) y mídela al menos 4 veces. Antes de cada lectura mantén pulsado el pulsador hasta que el multímetro marque 0, suéltalo, espera la meseta y registra el valor que lees en la aguja. Puedes escribir tu propia incertidumbre ± junto a la lectura.',
+      observe: 'Las lecturas difieren un poco: la aguja no se puede leer con más precisión que una fracción de división y el multímetro oscila. La tabla muestra ahora la media, la dispersión s y el error estándar s/√n de la línea.',
+      explain: 'La dispersión de lecturas repetidas es error aleatorio. Promediar n lecturas lo reduce en √n, así que el error estándar es s/√n. Un error sistemático, como la calibración del multímetro o una célula sucia, empuja todas las lecturas en el mismo sentido: promediar no lo reduce, por muchas lecturas que tomes. Por eso el ajuste da h ± σ para la parte aleatoria y el error sistemático del multímetro aparte.',
+      teacher: 'Respuesta: parecido, pero no idéntico. Éxito: al menos 4 lecturas válidas (estables, con descarga desde que se fijó la línea) de la misma línea, cada una tras una descarga nueva. La legibilidad típica de la aguja en Laboratorio es 0,02 V en el rango de 3 V y la oscilación de lectura unos 3 mV, así que s estará entre 0,01 y 0,03 V. Preguntad: ¿100 lecturas corregirían un multímetro mal calibrado? (No: el error es sistemático.) La barra de error del ajuste es max(s, σ)/√n, con σ la incertidumbre de lectura.',
+    },
     intensity: {
       title: '¿Más luz, más U0?',
       concept: 'Intensidad y energía',
@@ -144,8 +156,8 @@ export const es: PedagogyDict = {
       options: ['h', 'h/e', 'W/e', 'e/h'],
       act: 'En modo Laboratorio mide las cuatro líneas (amarilla, verde, azul, violeta). Luego lee h en la pendiente de la gráfica de U0 frente a ν.',
       observe: 'Los cuatro puntos quedan cerca de una recta. Su pendiente es h/e.',
-      explain: 'De e·ΔU0 = h·Δν sale h = e × pendiente. Este banco, como el del guion (6,1·10⁻³⁴ J·s), da un 10 % menos que el valor aceptado, 6,63·10⁻³⁴: la célula tiene fugas, así que las mesetas altas bajan más que las bajas, y la luz parásita de líneas más azules sube las lecturas bajas. Ambas aplanan la pendiente. La ordenada en el origen no es la función de trabajo del cátodo.',
-      teacher: 'Éxito: cuatro líneas válidas (estables y con descarga previa) y h a menos del 10 % de la h que da el modelo de este banco en el modo (unos 5,9 en Laboratorio, no 6,63; ver docs/teacher-key.md). Preguntad por qué sale un 10 % baja y por qué la ordenada no da W del potasio (interviene el ánodo, ec. VII).',
+      explain: 'De e·ΔU0 = h·Δν sale h = e × pendiente. El ajuste pesa cada línea según su barra de error y da h ± σ; compárala con el valor aceptado, 6,63·10⁻³⁴: dentro de 1σ o 2σ hay acuerdo, a más de 2σ busca errores sistemáticos. Este banco, como el del guion (6,1·10⁻³⁴ J·s), da un 10 % menos que el valor aceptado, 6,63·10⁻³⁴: la célula tiene fugas, así que las mesetas altas bajan más que las bajas, y la luz parásita de líneas más azules sube las lecturas bajas. Ambas aplanan la pendiente. La ordenada en el origen no es la función de trabajo del cátodo.',
+      teacher: 'Éxito: cuatro líneas válidas (estables y con descarga previa) y h a menos del 10 % de la h que da el modelo de este banco en el modo (unos 5,9 en Laboratorio, no 6,63; ver docs/teacher-key.md). La gráfica muestra h ± σ y la distancia a 6,63 en σ: con lecturas honestas σ ronda 0,17·10⁻³⁴, así que el resultado de Laboratorio queda varias σ por debajo, un efecto sistemático y no mala suerte (la cota de ganancia del 2,5 % del multímetro se da aparte). Preguntad por qué sale un 10 % baja y por qué la ordenada no da W del potasio (interviene el ánodo, ec. VII).',
     },
     threshold: {
       title: 'Mucha luz, pero bajo el umbral',

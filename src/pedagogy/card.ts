@@ -207,7 +207,7 @@ export function mountLearn(root: HTMLElement, ctx: PedContext): Learn {
   const fitLine = (parent: Element): void => {
     if (!task || task.id !== 'planck') return
     const f = a.fitResult()
-    el('p', 'ped-fit', parent).textContent = f ? fmt(S().ui.yourFit, { h: (f.h_Js / 1e-34).toFixed(2) }) : S().ui.noFit
+    el('p', 'ped-fit', parent).textContent = f ? fmt(S().ui.yourFit, { h: (f.h_Js / 1e-34).toFixed(2), s: (f.sigma_h_Js / 1e-34).toFixed(2) }) : S().ui.noFit
   }
   /** Choice predictions: tell the student whether they were right before the explanation. */
   const verdict = (k: GuidedTask, parent: Element): void => {

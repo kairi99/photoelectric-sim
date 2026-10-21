@@ -34,6 +34,10 @@ The `planck` task therefore tests h against the Lab model value 5.90, with a ±1
 True h = 6.63×10⁻³⁴ J·s (e = 1.6022×10⁻¹⁹ C). The leaflet obtains 6.1×10⁻³⁴.
 The intercept of e·U0 vs ν is not the cathode work function (anode work function enters, leaflet eq. VII).
 
+## Uncertainty of the fit
+
+Each Lab reading carries the needle readability σ = 0.020 V (a fifth of the smallest division, 0.1 V, on the 3 V range). One reading per line gives a weighted fit h = 5.90 ± 0.17 (×10⁻³⁴ J·s, statistical), which is -4.2 σ from the accepted 6.63: the clean Lab bench is off by a systematic effect (leakage, stray light), not by chance. The meter class (2.5 % of full scale) adds a separate, fully correlated systematic of about 0.15×10⁻³⁴ J·s on h (gain error) and up to ±0.075 V on the intercept (offset error, which does not change h). With n repeated readings of a line the error bar is max(s, σ)/√n.
+
 ## Error sources: plateaus (explore)
 
 | Line | Clean (V) | Dirty (V) | Stray light (V) |
@@ -70,6 +74,14 @@ Level 1 · lab mode · concept: Limit voltage
 - Success: A valid (settled and discharged) yellow measurement within ±0.05 V of the noise-free plateau of the mode (see table).
 - Teacher note: Leaflet value 0.59 V; the simulated lab plateau is in docs/teacher-key.md. Tolerance ±0.05 V allows honest needle reading (~0.02 V). The reading only counts if the capacitor was discharged after the line was set. Typical mistake: 2.1 V, equating e·U0 with h·ν and forgetting W. Also remind them not to touch the setup while measuring.
 
+### `repeat-spread` — Repeat and spread
+
+Level 2 · lab mode · concept: Random vs systematic error
+
+- Prediction answer: **Close, but not identical**
+- Success: At least four valid (settled and discharged) readings of the same line, each taken after a fresh discharge (checked in the procedure log).
+- Teacher note: Answer: close, but not identical. Success: at least 4 valid readings (settled, discharged since the line was set) of the same line, each after a fresh discharge. Typical Lab needle readability is 0.02 V on the 3 V range and the reading jitter is about 3 mV, so expect s of 0.01 to 0.03 V. Ask: would 100 readings fix a miscalibrated meter? (No: the error is systematic.) The error bar used in the fit is max(s, σ)/√n, where σ is the reading uncertainty.
+
 ### `intensity` — Brighter, higher U0?
 
 Level 2 · explore mode · concept: Intensity vs energy
@@ -84,7 +96,7 @@ Level 2 · lab mode · concept: h from the slope
 
 - Prediction answer: **h/e**
 - Success: Four distinct valid lines (settled and discharged) and a fit with h within 10 % of the Lab model value 5.90×10⁻³⁴ J·s (not of the true 6.63).
-- Teacher note: Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).
+- Teacher note: Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). The chart shows h ± σ and the distance from 6.63 in σ: with honest needle readings σ is about 0.17·10⁻³⁴, so the Lab result is several σ low, a systematic effect, not bad luck (the meter's own 2.5 % gain bound is listed separately). Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).
 
 ### `threshold` — Bright but below threshold
 

@@ -26,7 +26,7 @@ export const en = {
     openTask: 'Task',
     openTaskLabel: 'Open the task card',
     switchedMode: 'This task runs in {mode} mode. Your measurements were cleared.',
-    yourFit: 'Your fit: h = {h} × 10⁻³⁴ J·s',
+    yourFit: 'Your fit: h = ({h} ± {s}) × 10⁻³⁴ J·s',
     noFit: 'No fit yet.',
     replayTour: 'Replay the tour',
     helpLink: 'Open the theory sheet',
@@ -103,6 +103,8 @@ export const en = {
     findViolet: 'Turn the arm to the violet line first and read its hν on the bench.',
     fitOff: 'Your h is far off. Re-measure the point furthest from the line.',
     speedUp: 'Speed up the clock with ×5 or ×20.',
+    measureAgain: 'Measure the same line again: hold the key until the meter reads 0, release, wait for the plateau, record.',
+    seeSpread: 'Look at the table: the per-line summary shows the mean, s and the standard error.',
   },
   task: {
     'find-line': {
@@ -125,6 +127,16 @@ export const en = {
       explain: 'Each electron leaves with energy h·ν minus what it spends escaping, and that is what it can spend climbing the retarding voltage: e·U0 = h·ν − W. A yellow photon carries {Ey} eV, but part of it is lost to the work function, so U0 ≈ 0.6 V, not 2.1 V. This W is not potassium\'s: it belongs to the anode, as the Planck task shows.',
       teacher: 'Leaflet value 0.59 V; the simulated lab plateau is in docs/teacher-key.md. Tolerance ±0.05 V allows honest needle reading (~0.02 V). The reading only counts if the capacitor was discharged after the line was set. Typical mistake: 2.1 V, equating e·U0 with h·ν and forgetting W. Also remind them not to touch the setup while measuring.',
     },
+    'repeat-spread': {
+      title: 'Repeat and spread',
+      concept: 'Random vs systematic error',
+      predict: 'You measure the same line four times, discharging the capacitor each time. Will you read the same value every time?',
+      options: ['Yes, exactly the same', 'Close, but not identical', 'No, completely different values'],
+      act: 'In Lab mode pick one line (for example green) and measure it at least 4 times. Before each reading hold the key until the meter reads 0, release, wait for the plateau and record the value you read on the needle. You may type your own ± uncertainty next to the reading.',
+      observe: 'The readings differ a little: the needle is hard to read finer than a fraction of a division and the meter jitters. The table now shows the mean, the spread s and the standard error s/√n of the line.',
+      explain: 'The scatter of repeated readings is random error. Averaging n readings shrinks it by √n, so the standard error is s/√n. A systematic error, such as the meter\'s calibration or a dirty cell, pushes every reading the same way: averaging does not reduce it, no matter how many readings you take. That is why the fit gives h ± σ for the random part and the meter\'s systematic error separately.',
+      teacher: 'Answer: close, but not identical. Success: at least 4 valid readings (settled, discharged since the line was set) of the same line, each after a fresh discharge. Typical Lab needle readability is 0.02 V on the 3 V range and the reading jitter is about 3 mV, so expect s of 0.01 to 0.03 V. Ask: would 100 readings fix a miscalibrated meter? (No: the error is systematic.) The error bar used in the fit is max(s, σ)/√n, where σ is the reading uncertainty.',
+    },
     intensity: {
       title: 'Brighter, higher U0?',
       concept: 'Intensity vs energy',
@@ -142,8 +154,8 @@ export const en = {
       options: ['h', 'h/e', 'W/e', 'e/h'],
       act: 'In Lab mode measure all four lines (yellow, green, blue, violet). Then read h from the slope of the U0 vs ν chart.',
       observe: 'The four points lie close to a straight line. Its slope is h/e.',
-      explain: 'From e·ΔU0 = h·Δν we get h = e × slope. This bench, like the leaflet\'s (6.1·10⁻³⁴ J·s), reads about 10 % below the accepted 6.63·10⁻³⁴: the cell leaks, so high plateaus sag more than low ones, and stray light from bluer lines lifts the low readings. Both flatten the slope. The intercept is not the cathode work function.',
-      teacher: 'Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).',
+      explain: 'From e·ΔU0 = h·Δν we get h = e × slope. The fit weighs each line by its error bar and reports h ± σ; compare it with the accepted 6.63·10⁻³⁴: within 1σ or 2σ means agreement, more than 2σ means look for systematic errors. This bench, like the leaflet\'s (6.1·10⁻³⁴ J·s), reads about 10 % below the accepted 6.63·10⁻³⁴: the cell leaks, so high plateaus sag more than low ones, and stray light from bluer lines lifts the low readings. Both flatten the slope. The intercept is not the cathode work function.',
+      teacher: 'Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). The chart shows h ± σ and the distance from 6.63 in σ: with honest needle readings σ is about 0.17·10⁻³⁴, so the Lab result is several σ low, a systematic effect, not bad luck (the meter\'s own 2.5 % gain bound is listed separately). Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).',
     },
     threshold: {
       title: 'Bright but below threshold',

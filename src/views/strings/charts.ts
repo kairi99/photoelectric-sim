@@ -23,6 +23,16 @@ interface S {
   intercept: string
   planck: string
   deviation: string
+  systematic: string
+  chi2red: string
+  agree1: string
+  agree2: string
+  agree3: string
+  short1: string
+  short2: string
+  short3: string
+  sysNote: string
+  errorBars: string
   r2: string
   nPoints: (n: number) => string
   infoLabel: string
@@ -55,6 +65,17 @@ export const strings: Strings<S> = {
     intercept: 'Intercept',
     planck: 'h',
     deviation: 'Deviation from literature',
+    systematic: 'Meter systematic (gain)',
+    chi2red: 'χ² per degree of freedom',
+    agree1: 'Accepted value within 1σ.',
+    agree2: 'Accepted value within 2σ.',
+    agree3: 'More than 2σ from the accepted value: look for systematic errors.',
+    short1: 'accepted value within 1σ',
+    short2: 'accepted value within 2σ',
+    short3: '>2σ from accepted: look for systematic errors',
+    sysNote:
+      'Error bars and ± are statistical (reading uncertainty and spread). The meter\'s calibration error scales every point alike, so it is fully correlated: it tilts the line instead of scattering the points, and it is not in the error bars. It is given as a separate systematic.',
+    errorBars: 'bars: ±σ of the mean for each line',
     r2: 'r²',
     nPoints: (n) => `${n} points`,
     infoLabel: 'About the intercept',
@@ -86,6 +107,17 @@ export const strings: Strings<S> = {
     intercept: 'Ordenada en el origen',
     planck: 'h',
     deviation: 'Desviación respecto al valor de referencia',
+    systematic: 'Sistemático del multímetro (ganancia)',
+    chi2red: 'χ² por grado de libertad',
+    agree1: 'Valor aceptado dentro de 1σ.',
+    agree2: 'Valor aceptado dentro de 2σ.',
+    agree3: 'A más de 2σ del valor aceptado: busca errores sistemáticos.',
+    short1: 'valor aceptado dentro de 1σ',
+    short2: 'valor aceptado dentro de 2σ',
+    short3: '>2σ del aceptado: busca errores sistemáticos',
+    sysNote:
+      'Las barras de error y el ± son estadísticos (incertidumbre de lectura y dispersión). El error de calibración del multímetro afecta a todos los puntos por igual, así que está totalmente correlacionado: inclina la recta en vez de dispersar los puntos y no está en las barras de error. Se da aparte como sistemático.',
+    errorBars: 'barras: ±σ de la media de cada línea',
     r2: 'r²',
     nPoints: (n) => `${n} puntos`,
     infoLabel: 'Sobre la ordenada en el origen',

@@ -9,6 +9,15 @@ interface S {
   colNu: string
   colU0: string
   colWait: string
+  colN: string
+  colMean: string
+  colSd: string
+  colSem: string
+  sigmaLabel: string
+  summaryTitle: string
+  summaryCaption: string
+  summaryRule: string
+  errUncertainty: string
   colActions: string
   noLine: string
   lines: { yellow: string; green: string; blue: string; violet: string; uv: string }
@@ -39,8 +48,17 @@ export const strings: Strings<S> = {
     colLine: 'Line',
     colLambda: 'λ (nm)',
     colNu: 'ν (THz)',
-    colU0: 'U₀ (V)',
+    colU0: 'U₀ ± σ (V)',
     colWait: 'Wait (s)',
+    colN: 'n',
+    colMean: 'Mean ± σ (V)',
+    colSd: 's (V)',
+    colSem: 's/√n (V)',
+    sigmaLabel: 'Your reading uncertainty ± (V), optional',
+    summaryTitle: 'Repeated readings per line',
+    summaryCaption: 'Mean, spread and standard error for each line',
+    summaryRule: 'σ of the mean = larger of s and the reading uncertainty, divided by √n. This is the error bar used in the fit.',
+    errUncertainty: 'The uncertainty must be a positive number of volts (leave it empty for the default).',
     colActions: 'Delete',
     noLine: 'No line',
     lines: { yellow: 'Yellow', green: 'Green', blue: 'Blue', violet: 'Violet', uv: 'UV' },
@@ -68,8 +86,17 @@ export const strings: Strings<S> = {
     colLine: 'Línea',
     colLambda: 'λ (nm)',
     colNu: 'ν (THz)',
-    colU0: 'U₀ (V)',
+    colU0: 'U₀ ± σ (V)',
     colWait: 'Espera (s)',
+    colN: 'n',
+    colMean: 'Media ± σ (V)',
+    colSd: 's (V)',
+    colSem: 's/√n (V)',
+    sigmaLabel: 'Tu incertidumbre de lectura ± (V), opcional',
+    summaryTitle: 'Lecturas repetidas por línea',
+    summaryCaption: 'Media, dispersión y error estándar de cada línea',
+    summaryRule: 'σ de la media = el mayor entre s y la incertidumbre de lectura, dividido por √n. Es la barra de error que usa el ajuste.',
+    errUncertainty: 'La incertidumbre debe ser un número positivo de voltios (déjala vacía para usar el valor por defecto).',
     colActions: 'Borrar',
     noLine: 'Sin línea',
     lines: { yellow: 'Amarilla', green: 'Verde', blue: 'Azul', violet: 'Violeta', uv: 'UV' },

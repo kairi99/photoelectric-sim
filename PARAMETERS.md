@@ -29,6 +29,9 @@ Every empirical or fitted parameter of the model is listed here (honest-model in
 | `BEAM_INTENSITY_MIN` | 0.1 | relative | Explore-only neutral-density filter range (0.1 to 1). The real bench has no such filter; the slider (12) covers the emission window and only keeps room light out. | 2026-10-20 |
 | `MAX_STEP_V` | 0.01 | V | Numerical only: largest voltage change per integration sub-step, so RK4 cannot jump over the kink of the saturated F(U). | 2026-10-20 |
 | `LAB.wait_s` | 60 | s | Upper end of the leaflet's "30 s to 1 min" waiting time. | 2026-10-20 |
+| `NEEDLE_READABILITY_FRACTION` | 0.2 | fraction of the smallest scale division | ASSUMED: a student reads the analog needle to about a fifth of the smallest (fine-tick) division. The fine tick is 0.1 V on the 3 V range, so sigma = 0.02 V (0.004 V on 1 V); this matches the "honest needle reading" used by the tasks. Default reading uncertainty of Lab measurements; the student may type their own. | 2026-10-21 |
+| `DIGITAL_SIGMA_V` | 0.001 | V | ASSUMED reading uncertainty of the Explore digital readout (1 mV resolution, about twice the 0.5 mV `NOISE` jitter). | 2026-10-21 |
+| `METER_CLASS_PCT` | 2.5 | % of full scale | ASSUMED accuracy class of the analog multimeter. Absolute limit of error 0.075 V on the 3 V range. Used as a bound on the gain error: systematic sigma_h/h = 2.5 %; as an offset it moves only the intercept. Treated as a standard uncertainty (conservative, no division by sqrt 3). Not part of the error bars (fully correlated). | 2026-10-21 |
 
 ## Retarding-field shape F(U)
 

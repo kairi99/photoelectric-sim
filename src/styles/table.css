@@ -45,3 +45,5 @@
 .tbl-confirm { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .tbl-confirm-text { font: var(--text-callout); margin-right: var(--space-2); }
 @media (max-width: 420px) { .tbl-table th, .tbl-table td { padding-inline: var(--space-1); font: var(--text-footnote); } }
+.tbl-summary { display: grid; gap: var(--space-2); min-width: 0; }
+.tbl-subtitle { margin: 0; font: var(--text-callout); font-weight: 600; }

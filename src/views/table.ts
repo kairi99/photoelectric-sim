@@ -2,6 +2,7 @@
 import type { Measurement, RecordResult } from '../apparatus/index.ts'
 import type { MountView, View } from './view.ts'
 import { downloadCSV, toCSV } from './csv.ts'
+import { roundWithUncertainty } from '../physics/index.ts'
 import { strings } from './strings/table.ts'
 import '../styles/table.css'
 
@@ -36,9 +37,16 @@ export const mountTable: MountView = (root, ctx): View => {
   input.inputMode = 'decimal'
   input.autocomplete = 'off'
   label.append(labelText, input)
+  const sigLabel = el('label', 'tbl-field')
+  const sigLabelText = el('span', 'tbl-label')
+  const sigInput = el('input', 'tbl-input')
+  sigInput.type = 'text'
+  sigInput.inputMode = 'decimal'
+  sigInput.autocomplete = 'off'
+  sigLabel.append(sigLabelText, sigInput)
   const recBtn = el('button', 'tbl-btn tbl-btn-primary')
   recBtn.type = 'submit'
-  rec.append(label, recBtn)
+  rec.append(label, sigLabel, recBtn)
 
   const msg = el('p', 'tbl-msg')
   msg.setAttribute('role', 'status')
@@ -51,6 +59,19 @@ export const mountTable: MountView = (root, ctx): View => {
   table.append(caption, thead, tbody)
   scroll.append(table)
   const empty = el('p', 'tbl-empty')
+
+  // per-line summary of repeated readings (shown once any line has n >= 2)
+  const summary = el('div', 'tbl-summary')
+  const summaryH = el('h3', 'tbl-subtitle')
+  const summaryScroll = el('div', 'tbl-scroll')
+  const summaryTable = el('table', 'tbl-table')
+  const summaryCaption = el('caption', 'tbl-caption')
+  const summaryHead = el('thead')
+  const summaryBody = el('tbody')
+  summaryTable.append(summaryCaption, summaryHead, summaryBody)
+  summaryScroll.append(summaryTable)
+  const summaryRule = el('p', 'tbl-empty')
+  summary.append(summaryH, summaryScroll, summaryRule)
 
   const foot = el('div', 'tbl-foot')
   const exportBtn = el('button', 'tbl-btn')
@@ -67,7 +88,7 @@ export const mountTable: MountView = (root, ctx): View => {
   confirmBox.append(confirmText, yesBtn, noBtn)
   foot.append(exportBtn, clearBtn, confirmBox)
 
-  wrap.append(head, rec, msg, scroll, empty, foot)
+  wrap.append(head, rec, msg, scroll, empty, summary, foot)
   root.append(wrap)
 
   const parseValue = (raw: string): number | undefined => {
@@ -76,16 +97,30 @@ export const mountTable: MountView = (root, ctx): View => {
     return s === '' || !/^[+-]?(\d+\.?\d*|\.\d+)$/.test(s) ? NaN : Number(s)
   }
 
+  const nf = (x: number, d: number): string => {
+    const t = x.toFixed(Math.max(0, d))
+    return ctx.lang() === 'es' ? t.replace('.', ',') : t
+  }
+  /** "value ± sigma", sigma to 1-2 significant digits and the value to the same decimal. */
+  const pm = (value: number, sigma: number): string => {
+    const r = roundWithUncertainty(value, sigma)
+    return `${nf(r.value, r.decimals)} ± ${nf(r.sigma, r.decimals)}`
+  }
+
   const showResult = (r: RecordResult): void => {
     if (!r.ok) {
-      const key = r.error === 'invalid-value' ? 'errInvalid' : r.error === 'value-required' ? 'errRequired' : 'errMeterOff'
+      const key =
+        r.error === 'invalid-value' ? 'errInvalid'
+        : r.error === 'value-required' ? 'errRequired'
+        : r.error === 'invalid-uncertainty' ? 'errUncertainty'
+        : 'errMeterOff'
       notice = { kind: 'error', text: () => S()[key] }
     } else {
       const m = r.measurement
       if (m.lineId === null) notice = { kind: 'warn', text: () => S().warnMisaligned }
       else if (!m.settled) notice = { kind: 'warn', text: () => S().warnUnsettled }
       else notice = null
-      if (r.ok) input.value = ''
+      if (r.ok) { input.value = ''; sigInput.value = '' }
     }
     renderNotice()
   }
@@ -98,12 +133,14 @@ export const mountTable: MountView = (root, ctx): View => {
 
   rec.addEventListener('submit', (e) => {
     e.preventDefault()
-    if (app.mode === 'lab') showResult(app.record(parseValue(input.value)))
+    if (app.mode === 'lab') showResult(app.record(parseValue(input.value), parseValue(sigInput.value)))
     else showResult(app.record())
   })
-  input.addEventListener('input', () => {
-    if (notice?.kind === 'error') { notice = null; renderNotice() }
-  })
+  for (const i of [input, sigInput]) {
+    i.addEventListener('input', () => {
+      if (notice?.kind === 'error') { notice = null; renderNotice() }
+    })
+  }
   exportBtn.addEventListener('click', () => downloadCSV(toCSV(app.measurements, ctx.lang())))
   clearBtn.addEventListener('click', () => { confirming = true; applyConfirm(); yesBtn.focus() })
   noBtn.addEventListener('click', () => { confirming = false; applyConfirm(); clearBtn.focus() })
@@ -151,7 +188,7 @@ export const mountTable: MountView = (root, ctx): View => {
     const cells = [
       m.lambda_nm === null ? '–' : m.lambda_nm.toFixed(0),
       m.nu_Hz === null ? '–' : (m.nu_Hz / 1e12).toFixed(0),
-      m.U0_V.toFixed(2),
+      pm(m.U0_V, m.sigma_V),
       m.t_wait_s.toFixed(0),
     ].map((t) => el('td', 'tbl-num', t))
     const tdDel = el('td', 'tbl-del')
@@ -176,6 +213,28 @@ export const mountTable: MountView = (root, ctx): View => {
     if (ms.length === 0) confirming = false
     applyConfirm()
     void s
+    rebuildSummary()
+  }
+
+  const rebuildSummary = (): void => {
+    const s = S()
+    const lines = app.lineSummaries()
+    summary.hidden = !lines.some((l) => l.n >= 2)
+    summaryBody.replaceChildren(
+      ...lines.map((l) => {
+        const tr = el('tr')
+        const th = el('th')
+        th.scope = 'row'
+        const chip = el('span', 'tbl-chip')
+        chip.style.background = `var(${LINE_VAR[l.lineId]})`
+        chip.setAttribute('aria-hidden', 'true')
+        th.append(chip, el('span', 'tbl-name', s.lines[l.lineId]))
+        const sd = l.n > 1 ? nf(l.sd_V, 3) : '–'
+        const sem = l.n > 1 ? nf(l.sem_V, 3) : '–'
+        tr.append(th, ...[String(l.n), pm(l.mean_V, l.sigmaLine_V), sd, sem].map((t) => el('td', 'tbl-num', t)))
+        return tr
+      }),
+    )
   }
 
   const relabel = (): void => {
@@ -190,6 +249,12 @@ export const mountTable: MountView = (root, ctx): View => {
     thd.append(el('span', 'tbl-sr', s.colActions))
     tr.append(thd)
     thead.replaceChildren(tr)
+    summaryH.textContent = s.summaryTitle
+    summaryCaption.textContent = s.summaryCaption
+    summaryRule.textContent = s.summaryRule
+    const str = el('tr')
+    ;[s.colLine, s.colN, s.colMean, s.colSd, s.colSem].forEach((c, i) => { const th = el('th', i ? 'tbl-num' : '', c); th.scope = 'col'; str.append(th) })
+    summaryHead.replaceChildren(str)
     empty.textContent = s.empty
     exportBtn.textContent = s.exportCsv
     clearBtn.textContent = s.clearAll
@@ -200,12 +265,21 @@ export const mountTable: MountView = (root, ctx): View => {
     rebuild()
   }
 
+  /** The default (needle readability on the selected range) is the placeholder of the optional ± field. */
+  const refreshSigmaHint = (): void => {
+    const hint = nf(app.defaultSigma_V(), 3).replace(/0+$/, '').replace(/[.,]$/, '')
+    if (sigInput.placeholder !== hint) sigInput.placeholder = hint
+  }
+
   const applyMode = (): void => {
     const s = S()
     const lab = app.mode === 'lab'
     label.hidden = !lab
     input.placeholder = s.readingHint
     labelText.textContent = s.readingLabel
+    sigLabel.hidden = !lab
+    sigLabelText.textContent = s.sigmaLabel
+    refreshSigmaHint()
     recBtn.textContent = lab ? s.record : s.recordNow
   }
 
@@ -213,6 +287,7 @@ export const mountTable: MountView = (root, ctx): View => {
 
   const offs = [
     app.on('measurements', () => { notice = null; renderNotice(); rebuild() }),
+    app.on('change', refreshSigmaHint),
     app.on('mode', () => { notice = null; applyMode(); renderNotice(); rebuild() }),
   ]
 

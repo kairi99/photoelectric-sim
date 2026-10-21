@@ -13,7 +13,7 @@ export type ControlId =
 export type HintKey =
   | 'lampOff' | 'moveArm' | 'meterOff' | 'meterRange' | 'pressKey' | 'releaseKey' | 'waitMore' | 'typeValue'
   | 'otherLine' | 'dimDown' | 'dimUp' | 'pickZinc' | 'toggleError' | 'moreLines' | 'openFit'
-  | 'warmUp' | 'speedUp' | 'fitOff' | 'findViolet' | 'putViolet'
+  | 'warmUp' | 'speedUp' | 'fitOff' | 'findViolet' | 'putViolet' | 'measureAgain' | 'seeSpread'
 
 export interface TaskHint {
   when: (a: Apparatus) => boolean
@@ -94,4 +94,32 @@ export function alignedLampOn(a: Apparatus): HgLineId[] {
     else if (e.action === 'lineAligned' && lamp) out.push(e.detail as HgLineId)
   }
   return out
+}
+
+/** Minimum valid readings of one line for the "Repeat and spread" task (n = 4 gives a usable s and halves the random error). */
+export const REPEAT_MIN_READINGS = 4
+
+/**
+ * Number of readings of `line` that are valid (settled, discharged since alignment) AND were each preceded by a fresh
+ * discharge: the log must show the capacitor being emptied since the line was aligned or since the previous record.
+ * Pressing Record again on the same plateau is not an independent reading.
+ */
+export function freshReadings(a: Apparatus, line: HgLineId): number {
+  let current: HgLineId | null = null
+  let armed = false
+  let fresh = 0
+  for (const e of a.procedureLog) {
+    if (e.action === 'lineAligned') { current = e.detail as HgLineId; armed = false }
+    else if (e.action === 'discharged') armed = true
+    else if (e.action === 'recorded') {
+      if (armed && current === line) fresh++
+      armed = false
+    }
+  }
+  return Math.min(fresh, a.measurements.filter((m) => m.lineId === line && isValid(m)).length)
+}
+
+/** Most fresh valid readings taken of any single visible line. */
+export function mostRepeated(a: Apparatus): number {
+  return Math.max(0, ...VISIBLE_LINES.map((l) => freshReadings(a, l)))
 }

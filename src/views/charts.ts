@@ -2,9 +2,8 @@
 // Renders Apparatus state. The only model numbers shown (ideal U0, ideal line) come from src/physics.
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { H_Js, limitVoltage_V, nuFromLambda, HG_LINES } from '../physics/index.ts'
+import { limitVoltage_V, nuFromLambda, HG_LINES, roundWithUncertainty } from '../physics/index.ts'
 import type { HgLineId } from '../physics/index.ts'
-import type { Measurement } from '../apparatus/index.ts'
 import type { MountView, View } from './view.ts'
 import { strings } from './strings/charts.ts'
 import '../styles/charts.css'
@@ -123,7 +122,9 @@ export const mountCharts: MountView = (root, ctx): View => {
   infoBtn.setAttribute('aria-controls', info.id)
   const dl = el('dl', 'ch-dl')
   const noFit = el('p', 'ch-nofit')
-  card.append(cardHead, rule, info, dl, noFit)
+  const verdictEl = el('p', 'ch-verdict')
+  const sysNoteEl = el('p', 'ch-infotext')
+  card.append(cardHead, rule, info, dl, verdictEl, sysNoteEl, noFit)
   fitPanel.append(fitHead, fitBox, card)
 
   wrap.append(livePanel, fitPanel)
@@ -138,12 +139,15 @@ export const mountCharts: MountView = (root, ctx): View => {
   let lastRun = 0
   let liveIdealU0: number | null = null
   let fitState: {
-    pts: { nu: number; U: number; lineId: HgLineId | null; lambda: number | null }[]
+    /** One point per line: the mean with its error bar; `raw` are the individual readings when n > 1. */
+    pts: { nu: number; U: number; sigma: number; lineId: HgLineId | null; lambda: number | null; raw: number[] }[]
     fit: { a: number; b: number; nu0: number | null } | null
     ideal: { a: number; b: number } | null
     xmin: number
     ymax: number
-  } = { pts: [], fit: null, ideal: null, xmin: NU_MIN_THz, ymax: 1.6 }
+    /** Text drawn on the chart: the h result and the sigma comparison with the accepted value. */
+    result: { h: string; verdict: string } | null
+  } = { pts: [], fit: null, ideal: null, xmin: NU_MIN_THz, ymax: 1.6, result: null }
 
   // ---- chart 1: live U(t) --------------------------------------------------
   const axisCommon = () => ({
@@ -296,6 +300,43 @@ export const mountCharts: MountView = (root, ctx): View => {
         } else c.fillText(lbl, X(nu0) + 8 * r, Y(0) - 8 * r)
       }
     }
+    // result text in the free top-left corner: h with its uncertainty and the comparison in sigma
+    if (fitState.result) {
+      const pad = 6 * r
+      const lh = 16 * r
+      const ox0 = left + 4 * r
+      const family = theme.font.replace(/^[^ ]+ /, '')
+      const boldFont = `bold ${13 * r}px ${family}`
+      const hLine = fitState.result.h
+      // wrap the comparison sentence to the plot width
+      c.font = fontPx(12)
+      const maxW = width * 0.55
+      const rows: string[] = []
+      let cur = ''
+      for (const w of fitState.result.verdict.split(' ')) {
+        const t = cur ? `${cur} ${w}` : w
+        if (c.measureText(t).width > maxW && cur) { rows.push(cur); cur = w } else cur = t
+      }
+      if (cur) rows.push(cur)
+      const rowsW = Math.max(...rows.map((t) => c.measureText(t).width))
+      c.font = boldFont
+      const boxW = Math.min(width, Math.max(c.measureText(hLine).width, rowsW) + 2 * pad)
+      c.globalAlpha = 0.88
+      c.fillStyle = theme.surface
+      const boxH = (rows.length + 1) * lh + 2 * pad - 2 * r
+      // top-left: the fitted line rises to the right, so this corner is free
+      const ox = ox0
+      const oy = top + 4 * r
+      c.fillRect(ox, oy, boxW, boxH)
+      c.globalAlpha = 1
+      c.textAlign = 'left'
+      c.textBaseline = 'top'
+      c.fillStyle = theme.label
+      c.fillText(hLine, ox + pad, oy + pad)
+      c.font = fontPx(12)
+      c.fillStyle = theme.label2
+      rows.forEach((t, k) => c.fillText(t, ox + pad, oy + pad + (k + 1) * lh))
+    }
     // points with wavelength labels
     c.setLineDash([])
     c.font = fontPx(12)
@@ -304,16 +345,44 @@ export const mountCharts: MountView = (root, ctx): View => {
     for (const p of fitState.pts) {
       const x = X(p.nu)
       const y = Y(p.U)
+      // vertical error bar +-sigma of the mean, in the text colour so it shows in light and dark themes
+      const y1 = Y(p.U + p.sigma)
+      const y2 = Y(p.U - p.sigma)
+      const bar = (): void => {
+        c.beginPath()
+        c.moveTo(x, y1)
+        c.lineTo(x, y2)
+        c.moveTo(x - 6 * r, y1)
+        c.lineTo(x + 6 * r, y1)
+        c.moveTo(x - 6 * r, y2)
+        c.lineTo(x + 6 * r, y2)
+        c.stroke()
+      }
+      // individual readings of a repeated line
+      if (p.raw.length > 1) {
+        c.lineWidth = 1.5 * r
+        c.strokeStyle = theme.label2
+        c.beginPath()
+        for (const u of p.raw) {
+          c.moveTo(x + 9 * r, Y(u))
+          c.lineTo(x + 15 * r, Y(u))
+        }
+        c.stroke()
+      }
       c.fillStyle = p.lineId ? theme.line[p.lineId]! : theme.label2
       c.strokeStyle = theme.surface
       c.lineWidth = 2 * r
       c.beginPath()
-      c.arc(x, y, 6 * r, 0, Math.PI * 2)
+      c.arc(x, y, 4.5 * r, 0, Math.PI * 2)
       c.fill()
       c.stroke()
+      // bar drawn over the marker (a 1 sigma bar can be shorter than the marker)
+      c.strokeStyle = theme.label
+      c.lineWidth = 2 * r
+      bar()
       if (p.lambda !== null) {
         c.fillStyle = theme.label
-        c.fillText(`${nf(p.lambda, 0)} nm`, x - 8 * r, y - 6 * r)
+        c.fillText(`${nf(p.lambda, 0)} nm`, x - 8 * r, Math.min(y, y1) - 6 * r)
       }
     }
     c.restore()
@@ -372,6 +441,7 @@ export const mountCharts: MountView = (root, ctx): View => {
     info.textContent = s.infoText
     infoBtn.setAttribute('aria-label', s.infoLabel)
     noFit.textContent = s.noFit
+    sysNoteEl.textContent = `${s.sysNote} (${s.errorBars})`
     setAxisLabels()
     histLen = -1
     fitSig = ''
@@ -411,15 +481,20 @@ export const mountCharts: MountView = (root, ctx): View => {
 
   const refreshFit = (force: boolean): void => {
     idealLabel.hidden = app.mode !== 'explore' || answersHidden()
-    const ms: Measurement[] = app.measurements
-    const sig = `${app.mode}|${showIdeal}|${answersHidden()}|${ctx.lang()}|` + ms.map((m) => `${m.lineId}:${m.U0_V}`).join(';')
+    const ms = app.measurements
+    const sig = `${app.mode}|${showIdeal}|${answersHidden()}|${ctx.lang()}|` + ms.map((m) => `${m.lineId}:${m.U0_V}:${m.sigma_V}`).join(';')
     if (!force && sig === fitSig) return
     fitSig = sig
     const s = S()
     const f = app.fitResult()
-    const pts = ms
-      .filter((m) => m.nu_Hz !== null)
-      .map((m) => ({ nu: m.nu_Hz! / 1e12, U: m.U0_V, lineId: m.lineId, lambda: m.lambda_nm }))
+    const pts = app.lineSummaries().map((l) => ({
+      nu: l.nu_Hz / 1e12,
+      U: l.mean_V,
+      sigma: l.sigmaLine_V,
+      lineId: l.lineId as HgLineId | null,
+      lambda: l.lambda_nm as number | null,
+      raw: ms.filter((m) => m.lineId === l.lineId).map((m) => m.U0_V),
+    }))
     let fitLine: { a: number; b: number; nu0: number | null } | null = null
     if (f) {
       const a = f.slope_VperHz * 1e12
@@ -432,9 +507,9 @@ export const mountCharts: MountView = (root, ctx): View => {
       if (nu0 != null && nu0 > 200 && nu0 < NU_MIN_THz + 20) xmin = Math.min(xmin, Math.floor((nu0 - 20) / 25) * 25)
     }
     let ymax = 1.6
-    for (const p of pts) ymax = Math.max(ymax, p.U * 1.2)
+    for (const p of pts) ymax = Math.max(ymax, (p.U + p.sigma) * 1.2)
     for (const l of [fitLine, ideal]) if (l) ymax = Math.max(ymax, (l.a * NU_MAX_THz + l.b) * 1.05)
-    fitState = { pts, fit: fitLine, ideal, xmin, ymax: Math.min(ymax, 30) }
+    fitState = { pts, fit: fitLine, ideal, xmin, ymax: Math.min(ymax, 30), result: null }
     fit.setData([[xmin, NU_MAX_THz], [null, null]] as unknown as uPlot.AlignedData)
     fitEmpty.hidden = pts.length > 0
 
@@ -445,24 +520,35 @@ export const mountCharts: MountView = (root, ctx): View => {
     noFit.hidden = !!f
     let summary = s.noFit
     if (f) {
-      const h = f.h_Js
-      const dev = ((h - H_Js) / H_Js) * 100
-      const rows: [string, string][] = [
-        [s.slope, `${nf(f.slope_VperHz / 1e-15, 2)} ×10⁻¹⁵ V·s`],
-        [s.intercept, `${nf(f.intercept_V, 2)} V`],
-        [s.planck, `(${nf(h / 1e-34, 2)} ± ${nf(f.sigma_h_Js / 1e-34, 2)}) ×10⁻³⁴ J·s`],
-        [s.deviation, `${dev >= 0 ? '+' : '−'}${nf(Math.abs(dev), 1)} %`],
-        [s.r2, nf(f.r2, 3)],
-        ['n', s.nPoints(f.n)],
+      const pm = (v: number, sg: number, scale: number): string => {
+        const r = roundWithUncertainty(v / scale, sg / scale)
+        return `${nf(r.value, Math.max(0, r.decimals))} ± ${nf(r.sigma, Math.max(0, r.decimals))}`
+      }
+      const cmp = f.vsAccepted
+      const sgn = (x: number): string => (x >= 0 ? '+' : '−')
+      const hText = `h = (${pm(f.h_Js, f.sigma_h_Js, 1e-34)})·10⁻³⁴ J·s`
+      const verdict = cmp.verdict === 'within1' ? s.agree1 : cmp.verdict === 'within2' ? s.agree2 : s.agree3
+      const devText = `${sgn(cmp.deviation_pct)}${nf(Math.abs(cmp.deviation_pct), 1)} % (${sgn(cmp.deviation_sigma)}${Number.isFinite(cmp.deviation_sigma) ? nf(Math.abs(cmp.deviation_sigma), 1) : '∞'} σ)`
+      const rows: [string, string, string?][] = [
+        [s.slope, `(${pm(f.slope_VperHz, f.sigma_slope_VperHz, 1e-15)}) ×10⁻¹⁵ V·s`],
+        [s.intercept, `${pm(f.intercept_V, f.sigma_intercept_V, 1)} V`],
+        [s.planck, `(${pm(f.h_Js, f.sigma_h_Js, 1e-34)}) ×10⁻³⁴ J·s`, 'ch-main'],
       ]
+      if (f.sigma_h_sys_Js > 0) rows.push([s.systematic, `± ${nf(f.sigma_h_sys_Js / 1e-34, 2)} ×10⁻³⁴ J·s`])
+      rows.push([s.deviation, devText])
+      if (f.chi2_red !== null) rows.push([s.chi2red, nf(f.chi2_red, 2)])
+      rows.push([s.r2, nf(f.r2, 3)], ['n', `${s.nPoints(f.n)}`])
       dl.replaceChildren(
-        ...rows.flatMap(([k, v], i) => {
-          const dt = el('dt', undefined, k)
-          const dd = el('dd', i === 2 ? 'ch-main' : undefined, v)
-          return [dt, dd]
-        }),
+        ...rows.flatMap(([k, v, cls]) => [el('dt', undefined, k), el('dd', cls, v)]),
       )
-      summary = `h = ${nf(h / 1e-34, 2)} ×10⁻³⁴ J·s, ${s.deviation} ${nf(dev, 1)} %, r² ${nf(f.r2, 3)}.`
+      verdictEl.textContent = verdict
+      verdictEl.hidden = false
+      sysNoteEl.hidden = f.sigma_h_sys_Js <= 0
+      fitState.result = { h: hText, verdict: cmp.verdict === 'within1' ? s.short1 : cmp.verdict === 'within2' ? s.short2 : s.short3 }
+      summary = `${hText}, ${verdict} ${s.deviation} ${devText}, r² ${nf(f.r2, 3)}.`
+    } else {
+      verdictEl.hidden = true
+      sysNoteEl.hidden = true
     }
     fitHost.setAttribute('aria-label', s.fitAria(pts.length, summary))
     fit.redraw(false)

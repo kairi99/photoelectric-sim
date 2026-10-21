@@ -10,9 +10,15 @@ import {
   LAB,
   R_CELL_DIRTY_Ohm,
   R_INPUT_Ohm,
+  DIGITAL_SIGMA_V,
+  compareToAccepted,
   getLine,
-  linearFit,
+  groupStats,
   maxContributingU0_V,
+  meterClassError_V,
+  needleSigma_V,
+  systematicH_Js,
+  weightedLinearFit,
   mulberry32,
   nuFromLambda,
   photocurrentSlope_AperV,
@@ -21,6 +27,7 @@ import {
   totalLeakage_Ohm,
   withReadingNoise,
 } from '../physics/index.ts'
+import type { Comparison, GroupStats } from '../physics/index.ts'
 import type { CathodeId, HgLineId, PhotoOptions, Scenario } from '../physics/index.ts'
 
 export type Mode = 'explore' | 'lab'
@@ -85,6 +92,10 @@ export interface Measurement {
   lambda_nm: number | null
   nu_Hz: number | null
   U0_V: number
+  /** Standard uncertainty of this reading, V: needle readability (lab, or the value the student typed) or digital jitter (explore). */
+  sigma_V: number
+  /** Meter class error (absolute, V) of the range used: a systematic, fully correlated bound; 0 for the ideal explore readout. */
+  sigmaSys_V: number
   t_wait_s: number
   settled: boolean
   /** Explore beam-intensity filter when recorded (0.1..1; always 1 in lab, which has no filter). */
@@ -99,15 +110,36 @@ export interface Measurement {
    */
   dischargedSinceAlign: boolean
 }
-export type RecordResult = { ok: true; measurement: Measurement } | { ok: false; error: 'invalid-value' | 'value-required' | 'meter-off' }
+export type RecordResult =
+  | { ok: true; measurement: Measurement }
+  | { ok: false; error: 'invalid-value' | 'value-required' | 'meter-off' | 'invalid-uncertainty' }
 
+/** All readings of one spectral line: mean, spread and the uncertainty used in the fit (physics/uncertainty.ts). */
+export interface LineSummary extends GroupStats {
+  lineId: HgLineId
+  lambda_nm: number
+  nu_Hz: number
+}
+
+/** Weighted (1/sigma^2) fit of the per-line means of U0 against nu. */
 export interface FitSummary {
   slope_VperHz: number
   intercept_V: number
+  sigma_slope_VperHz: number
+  sigma_intercept_V: number
   h_Js: number
+  /** Statistical 1-sigma of h from the error bars. */
   sigma_h_Js: number
+  /** Systematic (meter gain) bound on h, 0 in Explore; fully correlated, not part of sigma_h_Js. */
+  sigma_h_sys_Js: number
+  /** Class error of the meter on the largest range used (V): moves the intercept, not the slope. 0 in Explore. */
+  offset_sys_V: number
   r2: number
+  chi2_red: number | null
+  /** Number of readings and of distinct lines in the fit. */
   n: number
+  nLines: number
+  vsAccepted: Comparison
 }
 
 export interface HistoryPoint {
@@ -653,7 +685,7 @@ export class Apparatus {
 
   // ---- measurements -------------------------------------------------------
   /** Lab: the student types the value read (0..30 V). Explore: omitted value auto-fills with the needle value. */
-  record(valueTyped_V?: number): RecordResult {
+  record(valueTyped_V?: number, sigmaTyped_V?: number): RecordResult {
     let v: number
     if (valueTyped_V === undefined) {
       if (this.mode === 'lab') return { ok: false, error: 'value-required' }
@@ -663,6 +695,9 @@ export class Apparatus {
       v = valueTyped_V
       if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 30) return { ok: false, error: 'invalid-value' }
     }
+    if (sigmaTyped_V !== undefined && !(typeof sigmaTyped_V === 'number' && Number.isFinite(sigmaTyped_V) && sigmaTyped_V > 0 && sigmaTyped_V <= 30)) {
+      return { ok: false, error: 'invalid-uncertainty' }
+    }
     const id = this.lineOnCell()
     const line = id ? getLine(id) : null
     const m: Measurement = {
@@ -670,6 +705,8 @@ export class Apparatus {
       lambda_nm: line ? line.lambda_nm : null,
       nu_Hz: line ? nuFromLambda(line.lambda_nm) : null,
       U0_V: v,
+      sigma_V: sigmaTyped_V ?? this.defaultSigma_V(),
+      sigmaSys_V: this.mode === 'lab' ? meterClassError_V(this.analogRange_V()) : 0,
       t_wait_s: this.clock_s - this.releaseTime_s,
       settled: this.settledNow,
       beamIntensity: this.effectiveBeam(),
@@ -696,18 +733,52 @@ export class Apparatus {
     this.emit('measurements', undefined)
     this.changed()
   }
-  /** U0 vs nu fit over aligned measurements; needs >= 2 distinct lines. */
+  /** Range of the analog scale a Lab reading comes from (3 V, the leaflet's range, if the meter is off). */
+  private analogRange_V(): number {
+    return this.meterRange === 'OFF' ? 3 : this.meterRange
+  }
+  /** Default reading uncertainty (V) for a new measurement: needle readability on the selected range (Lab) or digital jitter (Explore). */
+  defaultSigma_V(): number {
+    return this.mode === 'lab' ? needleSigma_V(this.analogRange_V()) : DIGITAL_SIGMA_V
+  }
+  /** Readings grouped by spectral line (only those with a line on the cell), in order of increasing frequency. */
+  lineSummaries(): LineSummary[] {
+    const groups = new Map<HgLineId, Measurement[]>()
+    for (const m of this.measurements) {
+      if (m.lineId === null || m.nu_Hz === null) continue
+      groups.set(m.lineId, [...(groups.get(m.lineId) ?? []), m])
+    }
+    return [...groups.entries()]
+      .map(([lineId, ms]) => ({
+        lineId,
+        lambda_nm: ms[0]!.lambda_nm!,
+        nu_Hz: ms[0]!.nu_Hz!,
+        ...groupStats(ms.map((m) => m.U0_V), ms.map((m) => m.sigma_V)),
+      }))
+      .sort((a, b) => a.nu_Hz - b.nu_Hz)
+  }
+  /** Weighted U0 vs nu fit over the per-line means; needs >= 2 distinct lines. */
   fitResult(): FitSummary | null {
-    const pts = this.measurements.filter((m): m is Measurement & { nu_Hz: number } => m.nu_Hz !== null)
-    if (new Set(pts.map((p) => p.lineId)).size < 2) return null
-    const f = linearFit(pts.map((p) => p.nu_Hz), pts.map((p) => p.U0_V))
+    const lines = this.lineSummaries()
+    if (lines.length < 2) return null
+    const f = weightedLinearFit(lines.map((l) => l.nu_Hz), lines.map((l) => l.mean_V), lines.map((l) => l.sigmaLine_V))
+    const h_Js = planckFromFit(f.slope)
+    const sigma_h_Js = planckFromFit(f.sigma_slope)
+    const used = this.measurements.filter((m) => m.lineId !== null && m.nu_Hz !== null)
     return {
       slope_VperHz: f.slope,
       intercept_V: f.intercept,
-      h_Js: planckFromFit(f.slope),
-      sigma_h_Js: planckFromFit(f.sigma_slope),
+      sigma_slope_VperHz: f.sigma_slope,
+      sigma_intercept_V: f.sigma_intercept,
+      h_Js,
+      sigma_h_Js,
+      sigma_h_sys_Js: used.some((m) => m.sigmaSys_V > 0) ? systematicH_Js(h_Js) : 0,
+      offset_sys_V: Math.max(0, ...used.map((m) => m.sigmaSys_V)),
       r2: f.r2,
-      n: pts.length,
+      chi2_red: f.chi2_red,
+      n: used.length,
+      nLines: lines.length,
+      vsAccepted: compareToAccepted(h_Js, sigma_h_Js),
     }
   }
 }

@@ -3,7 +3,7 @@
 import { STRAY_PRESET_FRACTION } from '../apparatus/index.ts'
 import {
   E_C, H_Js, IDEAL, LAB, R_CELL_DIRTY_Ohm, R_INPUT_Ohm, expectedReading_V, getLine, linearFit, nuFromLambda,
-  planckFromFit, steadyState_V,
+  planckFromFit, steadyState_V, METER_CLASS_PCT, compareToAccepted, needleSigma_V, systematicH_Js, weightedLinearFit,
 } from '../physics/index.ts'
 import type { CircuitInputs, HgLineId, Scenario } from '../physics/index.ts'
 import { TASKS } from './tasks/index.ts'
@@ -36,6 +36,7 @@ const SUCCESS: Record<string, string> = {
   'first-u0': `A valid (settled and discharged) yellow measurement within ±${FIRST_U0_TOL_V} V of the noise-free plateau of the mode (see table).`,
   intensity: `Two valid (settled and discharged) measurements of the same line, one at beam intensity ≥ ${BRIGHT_MIN} and one at ≤ ${DIM_MAX}.`,
   planck: `Four distinct valid lines (settled and discharged) and a fit with h within ${PLANCK_REL_TOL * 100} % of the Lab model value ${h34(expectedFitH_Js('lab'))}×10⁻³⁴ J·s (not of the true ${h34(H_Js)}).`,
+  'repeat-spread': 'At least four valid (settled and discharged) readings of the same line, each taken after a fresh discharge (checked in the procedure log).',
   threshold: `Cathode Zn, lamp warm, the violet line aligned, key released ≥ ${THRESHOLD_WAIT_s} s ago and U < ${THRESHOLD_MAX_U_V * 1000} mV.`,
   'error-sources': 'Dirty or stray light on, four distinct valid (settled and discharged) lines measured with the error active, and a fit available.',
 }
@@ -90,6 +91,20 @@ export function teacherKey(): string {
   )
   push('', `True h = ${h34(H_Js)}×10⁻³⁴ J·s (e = ${(E_C / 1e-19).toFixed(4)}×10⁻¹⁹ C). The leaflet obtains 6.1×10⁻³⁴.`)
   push('The intercept of e·U0 vs ν is not the cathode work function (anode work function enters, leaflet eq. VII).', '')
+
+  {
+    const sg = needleSigma_V(3)
+    const wf = weightedLinearFit(VISIBLE_LINES.map((l) => nuFromLambda(getLine(l).lambda_nm)), lb, lb.map(() => sg))
+    const hw = planckFromFit(wf.slope)
+    const sh = planckFromFit(wf.sigma_slope)
+    const cmp = compareToAccepted(hw, sh)
+    push(
+      '## Uncertainty of the fit',
+      '',
+      `Each Lab reading carries the needle readability σ = ${sg.toFixed(3)} V (a fifth of the smallest division, 0.1 V, on the 3 V range). One reading per line gives a weighted fit h = ${h34(hw)} ± ${h34(sh)} (×10⁻³⁴ J·s, statistical), which is ${cmp.deviation_sigma.toFixed(1)} σ from the accepted ${h34(H_Js)}: the clean Lab bench is off by a systematic effect (leakage, stray light), not by chance. The meter class (${METER_CLASS_PCT} % of full scale) adds a separate, fully correlated systematic of about ${h34(systematicH_Js(hw))}×10⁻³⁴ J·s on h (gain error) and up to ±${(METER_CLASS_PCT / 100 * 3).toFixed(3)} V on the intercept (offset error, which does not change h). With n repeated readings of a line the error bar is max(s, σ)/√n.`,
+      '',
+    )
+  }
 
   push('## Error sources: plateaus (explore)', '', '| Line | Clean (V) | Dirty (V) | Stray light (V) |', '|---|---|---|---|')
   const dirty = plateaus(IDEAL, { ...WITH_INPUT, R_cell_Ohm: R_CELL_DIRTY_Ohm })
