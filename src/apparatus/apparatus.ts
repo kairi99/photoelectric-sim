@@ -13,9 +13,15 @@ import {
   LAB,
   R_CELL_DIRTY_Ohm,
   R_INPUT_Ohm,
+  DIGITAL_SIGMA_V,
+  compareToAccepted,
   getLine,
-  linearFit,
+  groupStats,
   maxContributingU0_V,
+  meterClassError_V,
+  needleSigma_V,
+  systematicH_Js,
+  weightedLinearFit,
   mulberry32,
   nuFromLambda,
   photocurrentSlope_AperV,
@@ -24,6 +30,8 @@ import {
   totalLeakage_Ohm,
   withReadingNoise,
 } from '../physics/index.ts'
+import type { Comparison, GroupStats } from '../physics/index.ts'
+import { METER_CLASS_PCT } from '../physics/index.ts'
 import type { CathodeId, HgLineId, OpticsId, PhotoOptions, Scenario } from '../physics/index.ts'
 
 export type Mode = 'explore' | 'lab'
@@ -37,7 +45,12 @@ export const NEEDLE_TAU_s = 0.3
 export const MAX_REAL_DT_s = 5
 export const CHUNK_s = 0.25
 export const MAX_HISTORY = 2000
-/** Settled when the projected remaining rise |dU/dt| x tau_local is below max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL x U)... */
+/**
+ * Settled when the projected remaining rise |dU/dt| x tau_local is below a threshold...
+ * Lab: max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL x U), 1 to 1.5 mV, far below the needle readability (20 mV).
+ * Explore: the remaining approach must be below the digital reading sigma (DIGITAL_SIGMA_V = 1 mV), with no relative
+ * term (which would allow 1.5 mV at 1.5 V), so a "settled" Explore reading is within the 1 mV the display resolves.
+ */
 export const SETTLE_REMAIN_V = 1e-3
 export const SETTLE_REMAIN_REL = 1e-3
 /** ... and stays so for this long (s). */
@@ -47,17 +60,15 @@ export const BEAM_INTENSITY_MIN = 0.1
 export const LINE_SIGMA = 0.025 // line image width on the arm scale (1 sigma, arm fraction)
 export const ALIGNED_OVERLAP = 0.9
 /**
- * Stray-light fraction the "stray light" switch applies (explore), PARAMETERS.md. Small because the explore source is
- * bright (IDEAL.I_ref_A) and the stray current must compete with a leakage of only ~1e-13 A at 1 V; a few 1e-4 is
- * already enough to pull the weak low-frequency plateau up. Chosen (scan, PARAMETERS.md) so the fitted h falls by ~10 %
- * while the four plateaus stay strictly increasing (yellow and green merge for larger fractions).
+ * Stray-light fraction the "stray light" switch applies (explore), PARAMETERS.md. Tiny because the explore source is
+ * very bright (IDEAL.I_ref_A = 1.5e-8 A, ~60x the Lab one) and the stray current is a fraction OF that photocurrent,
+ * competing with a leakage of only ~1e-13 A at 1 V; a few 1e-5 already pulls the weak low-frequency plateau up.
+ * Chosen (scan, PARAMETERS.md) so the fitted h falls by ~10 % (-9.5 %) while the four plateaus stay strictly
+ * increasing (yellow and green merge at 2e-5 and above).
  */
-export const STRAY_PRESET_FRACTION = 2.6e-4
-/**
- * Accuracy class of the analog multimeter, in percent of full scale (ASSUMED 2.5, the class of a simple analog
- * multimeter; PARAMETERS.md). The error bound of a reading on range r is METER_CLASS_PCT/100 x r.
- */
-export const METER_CLASS_PCT = 2.5
+export const STRAY_PRESET_FRACTION = 1.9e-5
+/** Accuracy class of the analog multimeter (% of full scale), defined once in physics/uncertainty.ts. */
+export { METER_CLASS_PCT }
 /**
  * A given instrument is typically well inside its class bound: its seeded gain error is drawn uniformly within
  * +-METER_GAIN_TYPICAL x the class, i.e. +-1 % of the reading for class 2.5. ASSUMED.
@@ -110,6 +121,10 @@ export interface Measurement {
   lambda_nm: number | null
   nu_Hz: number | null
   U0_V: number
+  /** Standard uncertainty of this reading, V: needle readability (lab, or the value the student typed) or digital jitter (explore). */
+  sigma_V: number
+  /** Meter class error (absolute, V) of the range used: a systematic, fully correlated bound; 0 for the ideal explore readout. */
+  sigmaSys_V: number
   t_wait_s: number
   settled: boolean
   /** Explore beam-intensity filter when recorded (0.1..1; always 1 in lab, which has no filter). */
@@ -120,6 +135,10 @@ export interface Measurement {
   stray: boolean
   /** Explore override "anode emission" (reverse photocurrent) active when recorded. */
   anode: boolean
+  /** Cathode in use when recorded ('photocell' in lab). */
+  cathode: CathodeId
+  /** Explore option "fused-quartz optics" active when recorded. */
+  quartz: boolean
   /** Needle zero error at record time (V on the range in use, signed); always 0 in Explore. Lab: nonzero until the student zeroes. */
   zeroErr_V: number
   /**
@@ -128,15 +147,66 @@ export interface Measurement {
    */
   dischargedSinceAlign: boolean
 }
-export type RecordResult = { ok: true; measurement: Measurement } | { ok: false; error: 'invalid-value' | 'value-required' | 'meter-off' }
+/**
+ * A reading that may enter the fit: a line was on the cell, the plateau was reached (settled) and the capacitor was
+ * discharged after the line was set. Invalid readings stay in the table, flagged, and are excluded from the fit.
+ */
+export function isValidMeasurement(m: Pick<Measurement, 'lineId' | 'settled' | 'dischargedSinceAlign'>): boolean {
+  return m.lineId !== null && m.settled && m.dischargedSinceAlign
+}
 
+/** Measurement conditions that change the plateau (not the beam intensity, which only changes the speed in Explore). */
+export interface MeasurementConditions {
+  cathode: CathodeId
+  dirty: boolean
+  stray: boolean
+  anode: boolean
+  quartz: boolean
+}
+/** True for the clean default: the photocell with no error toggle and glass optics. */
+export function isCleanConditions(c: MeasurementConditions): boolean {
+  return c.cathode === 'photocell' && !c.dirty && !c.stray && !c.anode && !c.quartz
+}
+/** Key that groups readings of the same line taken under the same conditions. */
+export function measurementGroupKey(m: Pick<Measurement, 'lineId' | 'cathode' | 'dirty' | 'stray' | 'anode' | 'quartz'>): string {
+  return [m.lineId, m.cathode, +m.dirty, +m.stray, +m.anode, +m.quartz].join('|')
+}
+
+export type RecordResult =
+  | { ok: true; measurement: Measurement }
+  | { ok: false; error: 'invalid-value' | 'value-required' | 'meter-off' | 'invalid-uncertainty' }
+
+/** All readings of one spectral line: mean, spread and the uncertainty used in the fit (physics/uncertainty.ts). */
+export interface LineSummary extends GroupStats {
+  /** measurementGroupKey of the readings in this group (line + conditions). */
+  key: string
+  conditions: MeasurementConditions
+  lineId: HgLineId
+  lambda_nm: number
+  nu_Hz: number
+}
+
+/** Weighted (1/sigma^2) fit of the per-line means of U0 against nu. */
 export interface FitSummary {
   slope_VperHz: number
   intercept_V: number
+  sigma_slope_VperHz: number
+  sigma_intercept_V: number
   h_Js: number
+  /** Statistical 1-sigma of h from the error bars. */
   sigma_h_Js: number
+  /** Systematic (meter gain) standard uncertainty on h, GUM rectangular limit/sqrt(3); 0 in Explore. Fully correlated, not part of sigma_h_Js. */
+  sigma_h_sys_Js: number
+  /** Class error of the meter on the largest range used (V): moves the intercept, not the slope. 0 in Explore. */
+  offset_sys_V: number
   r2: number
+  chi2_red: number | null
+  /** Number of valid readings and of distinct lines in the fit. */
   n: number
+  nLines: number
+  /** Recorded readings left out of the fit because they are invalid (misaligned, unsettled or not discharged). */
+  nExcluded: number
+  vsAccepted: Comparison
 }
 
 export interface HistoryPoint {
@@ -702,7 +772,8 @@ export class Apparatus {
       const rate = (cur.I - this.U_V * G) / C_TOTAL_F
       remaining_V = Math.abs(rate) * (C_TOTAL_F / Math.max(G - cur.dI, 1e-30))
     }
-    if (eligible && remaining_V < Math.max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL * this.U_V)) this.settleTime_s += h
+    const settleLimit_V = this.mode === 'explore' ? DIGITAL_SIGMA_V : Math.max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL * this.U_V)
+    if (eligible && remaining_V < settleLimit_V) this.settleTime_s += h
     else this.settleTime_s = 0
     this.settledNow = this.settleTime_s > SETTLE_TIME_s
     if (this.settledNow && !this.settledEmitted) {
@@ -791,7 +862,7 @@ export class Apparatus {
 
   // ---- measurements -------------------------------------------------------
   /** Lab: the student types the value read (0..30 V). Explore: omitted value auto-fills with the needle value. */
-  record(valueTyped_V?: number): RecordResult {
+  record(valueTyped_V?: number, sigmaTyped_V?: number): RecordResult {
     let v: number
     if (valueTyped_V === undefined) {
       if (this.mode === 'lab') return { ok: false, error: 'value-required' }
@@ -801,6 +872,9 @@ export class Apparatus {
       v = valueTyped_V
       if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 30) return { ok: false, error: 'invalid-value' }
     }
+    if (sigmaTyped_V !== undefined && !(typeof sigmaTyped_V === 'number' && Number.isFinite(sigmaTyped_V) && sigmaTyped_V > 0 && sigmaTyped_V <= 30)) {
+      return { ok: false, error: 'invalid-uncertainty' }
+    }
     const id = this.lineOnCell()
     const line = id ? getLine(id) : null
     const m: Measurement = {
@@ -808,12 +882,16 @@ export class Apparatus {
       lambda_nm: line ? line.lambda_nm : null,
       nu_Hz: line ? nuFromLambda(line.lambda_nm) : null,
       U0_V: v,
+      sigma_V: sigmaTyped_V ?? this.defaultSigma_V(),
+      sigmaSys_V: this.mode === 'lab' ? meterClassError_V(this.analogRange_V()) : 0,
       t_wait_s: this.clock_s - this.releaseTime_s,
       settled: this.settledNow,
       beamIntensity: this.effectiveBeam(),
       dirty: this.mode === 'explore' && this.dirty,
       stray: this.mode === 'explore' && (this.stray_fraction ?? 0) > 0,
       anode: this.mode === 'explore' && this.anode,
+      cathode: this.mode === 'explore' ? this.cathode : 'photocell',
+      quartz: this.mode === 'explore' && this.quartz,
       zeroErr_V: this.zeroError_V(),
       dischargedSinceAlign: this.dischargedOk,
     }
@@ -836,18 +914,66 @@ export class Apparatus {
     this.emit('measurements', undefined)
     this.changed()
   }
-  /** U0 vs nu fit over aligned measurements; needs >= 2 distinct lines. */
+  /** Range of the analog scale a Lab reading comes from (3 V, the leaflet's range, if the meter is off). */
+  private analogRange_V(): number {
+    return this.meterRange === 'OFF' ? 3 : this.meterRange
+  }
+  /** Default reading uncertainty (V) for a new measurement: needle readability on the selected range (Lab) or digital jitter (Explore). */
+  defaultSigma_V(): number {
+    return this.mode === 'lab' ? needleSigma_V(this.analogRange_V()) : DIGITAL_SIGMA_V
+  }
+  /**
+   * VALID readings (isValidMeasurement) grouped by spectral line AND measurement conditions (cathode, dirty, stray,
+   * anode, quartz), in order of increasing frequency. Readings under different conditions are never pooled.
+   */
+  lineSummaries(): LineSummary[] {
+    const groups = new Map<string, Measurement[]>()
+    for (const m of this.measurements) {
+      if (!isValidMeasurement(m) || m.nu_Hz === null) continue
+      const k = measurementGroupKey(m)
+      groups.set(k, [...(groups.get(k) ?? []), m])
+    }
+    return [...groups.entries()]
+      .map(([key, ms]) => {
+        const m0 = ms[0]!
+        return {
+          key,
+          conditions: { cathode: m0.cathode, dirty: m0.dirty, stray: m0.stray, anode: m0.anode, quartz: m0.quartz },
+          lineId: m0.lineId!,
+          lambda_nm: m0.lambda_nm!,
+          nu_Hz: m0.nu_Hz!,
+          ...groupStats(ms.map((x) => x.U0_V), ms.map((x) => x.sigma_V)),
+        }
+      })
+      .sort((a, b) => a.nu_Hz - b.nu_Hz)
+  }
+  /**
+   * Weighted U0 vs nu fit over the per-group means of the valid readings; needs >= 2 distinct lines. Two groups at the
+   * same nu (different conditions) are both fitted. The verdict uses sigma_tot = sqrt(stat^2 + sys^2).
+   */
   fitResult(): FitSummary | null {
-    const pts = this.measurements.filter((m): m is Measurement & { nu_Hz: number } => m.nu_Hz !== null)
-    if (new Set(pts.map((p) => p.lineId)).size < 2) return null
-    const f = linearFit(pts.map((p) => p.nu_Hz), pts.map((p) => p.U0_V))
+    const lines = this.lineSummaries()
+    if (new Set(lines.map((l) => l.lineId)).size < 2) return null
+    const f = weightedLinearFit(lines.map((l) => l.nu_Hz), lines.map((l) => l.mean_V), lines.map((l) => l.sigmaLine_V))
+    const h_Js = planckFromFit(f.slope)
+    const sigma_h_Js = planckFromFit(f.sigma_slope)
+    const used = this.measurements.filter((m) => isValidMeasurement(m) && m.nu_Hz !== null)
+    const sigma_h_sys_Js = used.some((m) => m.sigmaSys_V > 0) ? systematicH_Js(h_Js) : 0
     return {
       slope_VperHz: f.slope,
       intercept_V: f.intercept,
-      h_Js: planckFromFit(f.slope),
-      sigma_h_Js: planckFromFit(f.sigma_slope),
+      sigma_slope_VperHz: f.sigma_slope,
+      sigma_intercept_V: f.sigma_intercept,
+      h_Js,
+      sigma_h_Js,
+      sigma_h_sys_Js,
+      offset_sys_V: Math.max(0, ...used.map((m) => m.sigmaSys_V)),
       r2: f.r2,
-      n: pts.length,
+      chi2_red: f.chi2_red,
+      n: used.length,
+      nLines: new Set(lines.map((l) => l.lineId)).size,
+      nExcluded: this.measurements.filter((m) => !isValidMeasurement(m)).length,
+      vsAccepted: compareToAccepted(h_Js, sigma_h_Js, undefined, sigma_h_sys_Js),
     }
   }
 }

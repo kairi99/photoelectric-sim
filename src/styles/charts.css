@@ -36,3 +36,4 @@
 .ch-dl dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .ch-dl dd.ch-main { font-weight: 600; }
 .ch-nofit { margin: 0; font: var(--text-footnote); color: var(--label-2); }
+.ch-verdict { margin: 0; font: var(--text-callout); font-weight: 600; }

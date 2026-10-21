@@ -398,11 +398,11 @@ describe('explore error toggles', () => {
     }
     return { h: a.fitResult()!.h_Js, U }
   }
-  it('stray preset lowers the fitted h by 10-30 %, keeps plateaus strictly increasing and raises low-nu lines most', () => {
+  it('stray preset lowers the fitted h by about 10 % (9-30 %), keeps plateaus strictly increasing and raises low-nu lines most', () => {
     const clean = exploreFit(() => {})
     const stray = exploreFit((a) => a.setOverrides({ stray_fraction: STRAY_PRESET_FRACTION }))
     const drop = 1 - stray.h / H
-    expect(drop).toBeGreaterThan(0.095)
+    expect(drop).toBeGreaterThan(0.09) // -9.5 % at the preset: yellow and green merge for larger fractions (PARAMETERS.md)
     expect(drop).toBeLessThan(0.3)
     for (let k = 1; k < 4; k++) expect(stray.U[k]!).toBeGreaterThan(stray.U[k - 1]! + 0.005)
     const raise = stray.U.map((u, k) => u - clean.U[k]!)
@@ -417,6 +417,21 @@ describe('explore error toggles', () => {
     expect(dirty.h).toBeLessThan(clean.h)
     expect(stray.h).toBeLessThan(clean.h)
     expect(dirty.U[3]!).toBeLessThan(clean.U[3]! - 0.02)
+  })
+})
+
+describe('explore settled flag', () => {
+  it('means the remaining approach is below the 1 mV digital reading sigma, for every visible line', () => {
+    for (const id of VISIBLE) {
+      const a = new Apparatus({ mode: 'explore', seed: 3 })
+      a.setLamp(true); a.setSpeed(1); run(a, 70)
+      a.setArm(a.linePosition(id))
+      a.pressKey(); a.tick(2); a.releaseKey()
+      for (let i = 0; i < 400 && !a.isSettled(); i++) a.tick(1)
+      expect(a.isSettled()).toBe(true)
+      const plateau = steadyState_V({ ...IDEAL.params, line: id })
+      expect(plateau - a.serialize().U_V).toBeLessThan(2e-3) // projected remaining < 1 mV, plus the linearisation slack
+    }
   })
 })
 
@@ -662,8 +677,9 @@ describe('explore quartz optics option', () => {
       a.pressKey(); a.tick(2); a.releaseKey()
       const t0 = a.clock_s
       const u0 = limitVoltage_V(nuFromLambda(getLine('uv').lambda_nm))
-      for (let i = 0; i < 2000; i++) {
-        run(a, 20)
+      a.setSpeed(1) // the bright Explore source charges in seconds: time it at 1 s resolution
+      for (let i = 0; i < 4000; i++) {
+        run(a, 1)
         if (a.serialize().U_V > 0.9 * u0) return a.clock_s - t0
       }
       return Infinity

@@ -26,7 +26,7 @@ export const en = {
     openTask: 'Task',
     openTaskLabel: 'Open the task card',
     switchedMode: 'This task runs in {mode} mode. Your measurements were cleared.',
-    yourFit: 'Your fit: h = {h} × 10⁻³⁴ J·s',
+    yourFit: 'Your fit: h = ({h} ± {s}) × 10⁻³⁴ J·s',
     noFit: 'No fit yet.',
     replayTour: 'Replay the tour',
     helpLink: 'Open the theory sheet',
@@ -106,6 +106,8 @@ export const en = {
     findViolet: 'Turn the arm to the violet line first and read its hν on the bench.',
     fitOff: 'Your h is far off. Re-measure the point furthest from the line.',
     speedUp: 'Speed up the clock with ×5 or ×20.',
+    measureAgain: 'Measure the same line again: hold the key until the meter reads 0, release, wait for the plateau, record.',
+    seeSpread: 'Look at the table: the per-line summary shows the mean, s and the standard error.',
   },
   task: {
     'find-line': {
@@ -128,6 +130,16 @@ export const en = {
       explain: 'Each electron leaves with energy h·ν minus what it spends escaping, and that is what it can spend climbing the retarding voltage: e·U0 = h·ν − W. A yellow photon carries {Ey} eV, but part of it is lost to the work function, so U0 ≈ 0.6 V, not 2.1 V. This W is not potassium\'s: it belongs to the anode, as the Planck task shows.',
       teacher: 'Leaflet value 0.59 V; the simulated lab plateau is in docs/teacher-key.md. Tolerance ±0.05 V allows honest needle reading (~0.02 V). The reading only counts if the capacitor was discharged after the line was set. Typical mistake: 2.1 V, equating e·U0 with h·ν and forgetting W. The needle starts a few hundredths of a volt off zero: a student who skips the zero adjust may miss the window. Also remind them not to touch the setup while measuring.',
     },
+    'repeat-spread': {
+      title: 'Repeat and spread',
+      concept: 'Random vs systematic error',
+      predict: 'You measure the same line four times, discharging the capacitor each time. Will you read the same value every time?',
+      options: ['Yes, exactly the same, always', 'Nearly the same; tiny differences are possible', 'No, completely different values'],
+      act: 'In Lab mode pick one line (for example green) and measure it at least 4 times. Before each reading hold the key until the meter reads 0, release, wait for the plateau and record the value you read on the needle. You may type your own ± uncertainty next to the reading.',
+      observe: 'The readings may well come out identical: the simulated needle hardly changes between repeats (under 1 mV) and you read it to a fraction of a division. Any spread you do see is your own reading scatter. The table shows the mean, the spread s (zero if all readings are equal) and the standard error s/√n of the line.',
+      explain: 'The scatter of repeated readings is random error, and averaging n readings shrinks that part by √n (the standard error s/√n). Averaging does not shrink the reading resolution (the needle can only be read to a fraction of a division, the same limit every time) or a systematic error such as the meter\'s calibration or a dirty cell, which push every reading the same way. That is why the error bar, √(s²/n + u²), never drops below the needle readability u however many readings you take, and why the fit gives the meter\'s systematic error separately.',
+      teacher: 'Answer: nearly the same, and identical readings are possible. Success: at least 4 valid readings (settled, discharged since the line was set) of the same line, each after a fresh discharge. In this model the needle does not vary between repeats (under 1 mV), so students reading to 0.02 V will often type the same value four times (s = 0): that is the teaching moment, the error bar then stays at the needle readability (0.02 V on the 3 V range), not zero. Any spread is the student\'s own reading scatter. Ask: would 100 readings fix a miscalibrated meter? (No: systematic.) Would they shrink the error bar to zero? (No: the readability does not average down.) The error bar is √(s²/n + u²), u the reading uncertainty.',
+    },
     intensity: {
       title: 'Brighter, higher U0?',
       concept: 'Intensity vs energy',
@@ -145,8 +157,8 @@ export const en = {
       options: ['h', 'h/e', 'W/e', 'e/h'],
       act: 'In Lab mode measure all four lines (yellow, green, blue, violet). Then read h from the slope of the U0 vs ν chart.',
       observe: 'The four points lie close to a straight line. Its slope is h/e.',
-      explain: 'From e·ΔU0 = h·Δν we get h = e × slope. This bench, like the leaflet\'s (6.1·10⁻³⁴ J·s), reads about 10 % below the accepted 6.63·10⁻³⁴: the cell leaks, the ring anode emits a little back-current of its own, and the fading edge of the cutoff lets the capacitor sag below U0, all more for high plateaus, while stray light from bluer lines lifts the low readings. Together they flatten the slope. The intercept is not the cathode work function.',
-      teacher: 'Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).',
+      explain: 'From e·ΔU0 = h·Δν we get h = e × slope. The fit weighs each line by its error bar and reports h with a statistical and a meter-systematic uncertainty; compare it with the accepted 6.63·10⁻³⁴ in units of the combined σ: within 1σ or 2σ means agreement, more than 2σ means look for systematic errors. This bench, like the leaflet\'s (6.1·10⁻³⁴ J·s), reads about 10 % below the accepted 6.63·10⁻³⁴: the cell leaks and the ring anode emits a little back-current of its own, both pulling the high plateaus down, while the fading edge of the cutoff (the thermal tail) and stray light from bluer lines let the weak low-frequency lines charge slightly past U0. Together they flatten the slope. The intercept is not the cathode work function.',
+      teacher: 'Success: four valid lines (settled and discharged) and h within 10 % of the h this bench model gives for the mode (about 5.9 in Lab, not 6.63; see docs/teacher-key.md). The chart shows h ± stat ± sys and the distance from 6.63 in units of σ_tot = √(σ_stat² + σ_sys²): with honest needle readings σ_stat is about 0.17·10⁻³⁴ and the meter\'s class gives σ_sys = h·2.5 %/√3 ≈ 0.09·10⁻³⁴ (GUM, rectangular), so the clean Lab result is about 4 σ_tot low, a systematic effect, not bad luck. Ask the class why the result is about 10 % low and why the intercept does not give W of potassium (anode work function, eq. VII).',
     },
     threshold: {
       title: 'Bright but below threshold',

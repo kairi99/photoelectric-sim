@@ -14,7 +14,7 @@ export interface Scenario {
 
 export const IDEAL: Scenario = {
   name: 'ideal',
-  params: { stray_fraction: 0, R_cell_Ohm: 1e21, R_input_Ohm: 1e21, I_ref_A: 1e-9 }, // bright source (~4x the lab one): settles in ~1 min; T = 0, no anode current
+  params: { stray_fraction: 0, R_cell_Ohm: 1e21, R_input_Ohm: 1e21, I_ref_A: 1.5e-8 }, // bright source (~60x the lab one): reaches U0 to within ~1 mV after 60 s (see PARAMETERS.md); T = 0, no anode current
   wait_s: Infinity,
 }
 

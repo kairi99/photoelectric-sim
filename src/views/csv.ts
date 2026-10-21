@@ -3,8 +3,8 @@ import type { Measurement } from '../apparatus/index.ts'
 import type { Lang } from '../i18n.ts'
 
 const HEADERS: Record<Lang, string[]> = {
-  en: ['line', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'wait (s)', 'settled'],
-  es: ['línea', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'espera (s)', 'estable'],
+  en: ['line', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'u (V)', 'wait (s)', 'settled'],
+  es: ['línea', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'incert. u (V)', 'espera (s)', 'estable'],
 }
 const LINE_NAMES: Record<Lang, Record<string, string>> = {
   en: { yellow: 'yellow', green: 'green', blue: 'blue', violet: 'violet', uv: 'UV' },
@@ -12,6 +12,10 @@ const LINE_NAMES: Record<Lang, Record<string, string>> = {
 }
 const YES_NO: Record<Lang, [string, string]> = { en: ['yes', 'no'], es: ['sí', 'no'] }
 const NO_LINE: Record<Lang, string> = { en: 'none', es: 'ninguna' }
+
+/** Decimals that keep 2 significant digits of the uncertainty (at least 3, like U0). */
+const sigmaDecimals = (sigma_V: number): number =>
+  sigma_V > 0 && Number.isFinite(sigma_V) ? Math.min(12, Math.max(3, 1 - Math.floor(Math.log10(sigma_V)))) : 3
 
 /** en: "," separator and "." decimals. es: ";" separator and "," decimals. */
 export function toCSV(measurements: readonly Measurement[], lang: Lang): string {
@@ -27,6 +31,7 @@ export function toCSV(measurements: readonly Measurement[], lang: Lang): string 
       m.lambda_nm === null ? '' : num(m.lambda_nm, 1),
       m.nu_Hz === null ? '' : num(m.nu_Hz / 1e12, 1),
       num(m.U0_V, 3),
+      num(m.sigma_V, sigmaDecimals(m.sigma_V)),
       num(m.t_wait_s, 1),
       m.settled ? YES_NO[lang][0] : YES_NO[lang][1],
     ])

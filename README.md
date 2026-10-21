@@ -15,14 +15,15 @@ A browser-based, physics-driven simulation of the compact photoelectric-effect e
 - **Explore** is an ideal instrument. You see the true voltage as a digital readout, can change hidden physics (cathode material, error sources) and can run the clock at 20x. Good for building intuition and for what-if questions.
 - **Lab** is a realistic bench: reading noise, leakage, stray light, a back-current from the ring anode, a fuzzy thermal cutoff, slow lamp drift, and an analog needle with no number that you must read yourself, whose mechanical zero you have to adjust first and whose gain is only good to its accuracy class. It is **honour-based**: nothing stops a student from peeking at Explore mode or typing a value; the point is practice, not policing.
 
-**Guided tasks.** Open **Learn** and pick one of six tasks. Each follows predict, act, observe, explain, and is checked automatically against the model:
+**Guided tasks.** Open **Learn** and pick one of seven tasks. Each follows predict, act, observe, explain, and is checked automatically against the model:
 
 1. Find the yellow line
 2. Your first U0
-3. Brighter, higher U0?
-4. Bright but below threshold
-5. Measure Planck's constant (four lines, fit of U0 vs frequency)
-6. When the bench lies (dirt, stray light)
+3. Repeat and spread (same line four times: random vs systematic error)
+4. Brighter, higher U0?
+5. Bright but below threshold
+6. Measure Planck's constant (four lines, weighted fit of U0 vs frequency, h ± σ)
+7. When the bench lies (dirt, stray light)
 
 **Also built in:** a short **tour** on the first visit (replayable from the Learn drawer), a **procedure checklist** that tracks the real steps (lamp warm, meter on, discharge, release, wait until settled, record), a **coach** that nudges when something is off (meter still off, not discharged, over range), and a bilingual **help page** (the `?` button).
 

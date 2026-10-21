@@ -59,6 +59,7 @@ function measure(a: Apparatus, id: HgLineId): void {
 const SOLUTIONS: Record<string, (a: Apparatus) => void> = {
   'find-line': (a) => { a.setLamp(true); a.setArm(a.linePosition('violet')); a.setArm(a.linePosition('yellow')) },
   'first-u0': (a) => { warmUp(a); measure(a, 'yellow') },
+  'repeat-spread': (a) => { warmUp(a); for (let i = 0; i < 4; i++) measure(a, 'green') },
   intensity: (a) => {
     warmUp(a)
     measure(a, 'green')
@@ -142,7 +143,7 @@ describe('pedagogy i18n', () => {
 describe('guided tasks', () => {
   it('ids are unique and every task has a solution script', () => {
     expect(new Set(TASKS.map((t) => t.id)).size).toBe(TASKS.length)
-    expect(TASKS.length).toBe(6)
+    expect(TASKS.length).toBe(7)
     for (const t of TASKS) expect(SOLUTIONS[t.id], t.id).toBeTypeOf('function')
   })
   it('choice answers index into the options of both languages', () => {
@@ -180,7 +181,7 @@ describe('guided tasks', () => {
     expect(a.measurements).toHaveLength(0)
     expect(a.lampOn).toBe(false)
   })
-  for (const id of ['find-line', 'first-u0', 'intensity', 'planck', 'threshold', 'error-sources']) {
+  for (const id of ['find-line', 'first-u0', 'repeat-spread', 'intensity', 'planck', 'threshold', 'error-sources']) {
     it(`a scripted sequence completes ${id}`, () => {
       const t = TASKS.find((x) => x.id === id) as GuidedTask
       const a = new Apparatus({ mode: t.mode })
@@ -588,5 +589,48 @@ describe('phase 5a pedagogy fixes', () => {
     expect(en.checklist.steps.wait).toBe('Wait for the plateau without touching anything')
     expect(es.ui.verdictRight).toBe('¡Acertaste!')
     expect(en.ui.verdictWrong).toBe('Not this time.')
+  })
+})
+
+describe('repeat-spread task', () => {
+  const t = TASKS.find((x) => x.id === 'repeat-spread')!
+  it('sits after first-u0 and before planck, in Lab mode', () => {
+    const ids = TASKS.map((x) => x.id)
+    expect(ids.indexOf('repeat-spread')).toBe(ids.indexOf('first-u0') + 1)
+    expect(ids.indexOf('repeat-spread')).toBeLessThan(ids.indexOf('planck'))
+    expect(t.mode).toBe('lab')
+  })
+  it('three readings are not enough, the fourth completes it', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    for (let i = 0; i < 3; i++) measure(a, 'blue')
+    expect(t.success(a)).toBe(false)
+    measure(a, 'blue')
+    expect(t.success(a)).toBe(true)
+  })
+  it('four readings spread over different lines do not count', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    for (const id of VISIBLE_LINES) measure(a, id)
+    expect(t.success(a)).toBe(false)
+  })
+  it('pressing Record four times on one plateau (no new discharge) does not count', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    applyInitial(a, t)
+    warmUp(a)
+    measure(a, 'green')
+    for (let i = 0; i < 3; i++) a.record(Math.round(a.readout().needleValue_V! * 50) / 50)
+    expect(a.measurements).toHaveLength(4)
+    expect(t.success(a)).toBe(false)
+  })
+  it('has the new hint keys and the strings in both languages', () => {
+    for (const d of [en, es]) {
+      expect(d.hints.measureAgain.length).toBeGreaterThan(10)
+      expect(d.hints.seeSpread.length).toBeGreaterThan(10)
+      expect(d.task['repeat-spread'].options).toHaveLength(3)
+    }
+    expect(t.predict).toEqual({ kind: 'choice', answer: 1 })
   })
 })

@@ -35,14 +35,16 @@ console.log(`Lab fitted h = ${h34(fitH(labU))} (${pct(fitH(labU))}); U(50 s) - s
 console.log('\n## h deficit breakdown (steady states)')
 console.log('| Case | yellow | green | blue | violet | h (1e-34) | vs true |\n|---|---|---|---|---|---|---|')
 const L = LAB.params
+// Lab-brightness baseline for the breakdown (IDEAL.params carries the brighter Explore source).
+const LAB_BASE: Extra = { ...IDEAL.params, I_ref_A: I_REF_A }
 const bare: Extra = { ...IDEAL.params }
-console.log(row('Ideal', plateaus(IDEAL.params)))
-console.log(row('Electrometer input resistance only (1e13 Ohm)', plateaus(IDEAL.params, { R_input_Ohm: R_INPUT_Ohm })))
-console.log(row('Leakage alone (cell + input)', plateaus(IDEAL.params, { R_cell_Ohm: L.R_cell_Ohm, R_input_Ohm: R_INPUT_Ohm })))
-console.log(row('Stray light alone (input resistance only)', plateaus(IDEAL.params, { R_input_Ohm: R_INPUT_Ohm, stray_fraction: L.stray_fraction })))
-console.log(row('Anode (reverse) current alone (input resistance only)', plateaus(IDEAL.params, { R_input_Ohm: R_INPUT_Ohm, anode_fraction: L.anode_fraction })))
-console.log(row('Thermal tail alone (T = 298 K, input resistance only)', plateaus(IDEAL.params, { R_input_Ohm: R_INPUT_Ohm, T_K: T_ROOM_K })))
-console.log(row('Leakage + stray light', plateaus(IDEAL.params, { R_cell_Ohm: L.R_cell_Ohm, stray_fraction: L.stray_fraction })))
+console.log(row('Ideal', plateaus(LAB_BASE)))
+console.log(row('Electrometer input resistance only (1e13 Ohm)', plateaus(LAB_BASE, { R_input_Ohm: R_INPUT_Ohm })))
+console.log(row('Leakage alone (cell + input)', plateaus(LAB_BASE, { R_cell_Ohm: L.R_cell_Ohm, R_input_Ohm: R_INPUT_Ohm })))
+console.log(row('Stray light alone (input resistance only)', plateaus(LAB_BASE, { R_input_Ohm: R_INPUT_Ohm, stray_fraction: L.stray_fraction })))
+console.log(row('Anode (reverse) current alone (input resistance only)', plateaus(LAB_BASE, { R_input_Ohm: R_INPUT_Ohm, anode_fraction: L.anode_fraction })))
+console.log(row('Thermal tail alone (T = 298 K, input resistance only)', plateaus(LAB_BASE, { R_input_Ohm: R_INPUT_Ohm, T_K: T_ROOM_K })))
+console.log(row('Leakage + stray light', plateaus(LAB_BASE, { R_cell_Ohm: L.R_cell_Ohm, stray_fraction: L.stray_fraction })))
 console.log(row('Leakage + stray + anode', plateaus(L, { T_K: 0 })))
 console.log(row('Leakage + stray + thermal tail', plateaus(L, { anode_fraction: 0 })))
 console.log(row('Full LAB (all effects)', labU))
@@ -62,7 +64,7 @@ console.log(row(`Stray ${STRAY_PRESET_FRACTION}`, plateaus(IDEAL.params, { ...WI
 console.log(row(`Anode emission ${ANODE_ILLUM_FRACTION}`, plateaus(IDEAL.params, { ...WITH_IN, anode_fraction: ANODE_ILLUM_FRACTION })))
 console.log(row('Input resistance only', plateaus(IDEAL.params, WITH_IN)))
 console.log('\nstray scan (explore):')
-for (const s of [3e-5, 5e-5, 6e-5, 8e-5, 1e-4, 1.5e-4, 2e-4, 3e-4, 5e-4, 1e-3]) {
+for (const s of [5e-6, 1e-5, 1.5e-5, 1.7e-5, 1.9e-5, 2e-5, 3e-5, 1e-4]) {
   const U = plateaus(IDEAL.params, { ...WITH_IN, stray_fraction: s })
   console.log(s, U.map(f3).join(' '), h34(fitH(U)), pct(fitH(U)))
 }

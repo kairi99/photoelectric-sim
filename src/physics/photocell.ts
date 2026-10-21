@@ -65,6 +65,10 @@ export function emits(nu_Hz: number, W_C_eV: number): boolean {
  * and saturates smoothly to 1 for x >> x0 (no kink, unlike the old linear ramp). The saturation form and the
  * scale x0 are ASSUMED (a real K layer peaks near 400 nm and then falls again); PARAMETERS.md. Used for the cathode
  * (W_C) and for the anode (W_A, reverse current).
+ *
+ * T = 0 threshold. The yield uses the sharp T = 0 threshold (x = h*nu - W) even in the 298 K Lab, where the retarding
+ * shape F(U) carries the thermal smearing. Harmless: the smearing is ~kT = 0.026 eV, and even the weakest visible line
+ * (yellow, h*nu - W_C = 0.245 eV) lies ~10 kT above W_C, where the thermal correction (pi kT)^2 / (3 x^2) is ~4 % at most.
  */
 export function qeFactor(nu_Hz: number, W_eV: number): number {
   const x = photonEnergy_eV(nu_Hz) - W_eV
@@ -136,6 +140,10 @@ export function thermalWindowSlope_eV(x_eV: number, T_K: number): number {
  * saturated (F = 1) up to U = (W_C - W_A)/e for the model's K-contaminated ring (W_A < W_C), then falling over the real
  * spread h*nu - W_C and exactly 0 at U0 = (h*nu - W_A)/e. For T > 0 the Fermi-Dirac edge smears the cutoff: F no longer
  * stops at U0 but fades as e^(-(U - U0)/kT) beyond it (a few kT), and is slightly rounded below it.
+ *
+ * Approximation: the criterion uses the electron energy along the NORMAL (planar Fowler-DuBridge picture). The LD cell
+ * has a spherical cathode and a ring anode, so the real trajectories and the retarding field are not planar; the
+ * planar form is a simplification, not a model of that geometry.
  */
 export function retardingShape(U_V: number, nu_Hz: number, W_C_eV: number, W_A_eV: number, T_K = 0): number {
   const E = photonEnergy_eV(nu_Hz)
@@ -175,7 +183,7 @@ export function retardingShapeSlope_perV(U_V: number, nu_Hz: number, W_C_eV: num
  * barriers for an anode electron of energy epsilon above the anode Fermi level are the anode work function W_A
  * (to leave) and the cathode vacuum level, which lies W_C - e*U above (the contact potential W_C - W_A is partly
  * cancelled by the charged capacitor): epsilon >= max(W_A, W_C - e*U). With W_A < W_C the reverse current is therefore
- * partly retarded by the contact field at U = 0 and becomes exactly saturated for U >= (W_C - W_A)/e (= 0.371 V),
+ * partly retarded by the contact field at U = 0 and becomes exactly saturated for U >= (W_C - W_A)/e (= 0.373 V),
  * i.e. for all voltages of interest. It does NOT vanish at U0 (that is why it lowers the plateau). R = Phi_T(h*nu -
  * max(W_A, W_C - e*U)) / Phi_T(h*nu - W_A), clamped to [0, 1]. Increasing in U.
  */

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   CATHODES, E_C, H_Js, HG_LINES, chargeCurve, emits, expectedReading_V, getLine, IDEAL, LAB, limitVoltage_V,
   linearFit, measureVisible, nuFromLambda, photocurrent_A, photonEnergy_eV, planckFromFit, step, steadyState_V,
-  W_A_eV, maxContributingU0_V, retardingShape, R_INPUT_Ohm, ANODE_ILLUM_FRACTION, C_DA_F, C_TOTAL_F, K_B_eV_perK,
+  W_A_eV, I_REF_A, maxContributingU0_V, retardingShape, R_INPUT_Ohm, ANODE_ILLUM_FRACTION, C_DA_F, C_TOTAL_F, K_B_eV_perK,
   forwardCurrent_A, fowlerF, linePower, photocurrentSlope_AperV, qeFactor, retardingShapeSlope_perV, reverseCurrent_A,
 } from '../src/physics/index.ts'
 import type { CircuitInputs, HgLineId } from '../src/physics/index.ts'
@@ -72,12 +72,20 @@ describe('charging dynamics', () => {
     }
   })
   it('beam intensity 25 % keeps the ideal U0 but at least doubles the 90 % time', () => {
-    const base: CircuitInputs = { ...IDEAL.params, line: 'green' }
+    // Lab-brightness source: the bright Explore source reaches 90 % of U0 in under the 1 s step of timeTo.
+    const base: CircuitInputs = { ...IDEAL.params, I_ref_A: I_REF_A, line: 'green' }
     const dim: CircuitInputs = { ...base, beamIntensity: 0.25 }
     expect(Math.abs(steadyState_V(dim) - steadyState_V(base))).toBeLessThan(1e-3)
     const U0 = limitVoltage_V(nuOf('green'))
     // Use a long-lived equilibrium reference: both curves are run to 4000 s, 90 % of U0 is reached by both.
     expect(timeTo(0.9, dim, U0)).toBeGreaterThanOrEqual(2 * timeTo(0.9, base, U0))
+  })
+  it('Explore source: every visible line is within 1 mV of its plateau 60 s after release (the leaflet-style minute)', () => {
+    for (const id of visible) {
+      const inp: CircuitInputs = { ...IDEAL.params, line: id }
+      const c = chargeCurve(inp, 60, 60)
+      expect(steadyState_V(inp) - c.U_V[60]!).toBeLessThan(1e-3) // 1 mV = the Explore digital reading sigma
+    }
   })
   it('dirty cell plateau is clearly lower than clean', () => {
     const clean = steadyState_V({ ...LAB.params, line: 'violet', R_cell_Ohm: 1e14, stray_fraction: 0 })
