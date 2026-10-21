@@ -73,7 +73,6 @@
   display: grid; gap: var(--space-1); align-content: start; transition: opacity var(--dur-base) var(--ease-out);
 }
 .ctl-wide { grid-column: 1 / -1; }
-.ctl.is-dimmed { opacity: 0.45; }
 .ctl-label { font: var(--text-callout); font-weight: 600; }
 .ctl-help { margin: 0; font: var(--text-footnote); color: var(--label-2); }
 .bench[data-mode='lab'] .only-explore, .bench[data-mode='explore'] .only-lab { display: none; }

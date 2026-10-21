@@ -473,9 +473,6 @@ export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
   return {
     update,
     relabel,
-    focus(list) {
-      for (const [name, el] of ctls) el.classList.toggle('is-dimmed', list !== null && !list.includes(name))
-    },
     setStageVisible(visible) {
       stage.hidden = !visible
       hint.hidden = !visible

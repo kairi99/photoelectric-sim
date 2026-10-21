@@ -30,7 +30,7 @@ export interface GuidedTask {
   mode: Mode
   /** 1 intro, 2 core, 3 challenge. */
   level: 1 | 2 | 3
-  /** Controls the task needs; the others are dimmed, not disabled. */
+  /** Controls the task needs; the 3D bench highlights them. Nothing is dimmed or disabled. */
   controls: ControlId[]
   /** Applied after reset() through load(). */
   initial: Partial<Controls>

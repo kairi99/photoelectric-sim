@@ -506,9 +506,9 @@ describe('phase 5a pedagogy fixes', () => {
     for (const d of [en, es]) for (const t of Object.values(d.task)) expect(`${t.explain}${t.teacher}`).not.toMatch(/2[.,]14|3[.,]4 eV/)
     expect(teacherKey()).toContain('| yellow 578 nm | 519 | 2.15 |')
   })
-  it('Spanish uses raya / pulsador / multímetro consistently', () => {
+  it('Spanish uses línea / pulsador / multímetro consistently', () => {
     const all = JSON.stringify(es)
-    expect(all).not.toMatch(/línea|Línea|medidor|Medidor|tecla\b|trabajo de extracción/)
+    expect(all).not.toMatch(/\b[Rr]ayas?\b|medidor|Medidor|tecla\b|trabajo de extracción/)
   })
   it('new strings exist in both languages', () => {
     expect(en.checklist.steps.cover).toBe('Room dim or window cover closed')

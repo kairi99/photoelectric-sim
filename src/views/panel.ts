@@ -252,9 +252,6 @@ export const mountPanel: MountView = (root, ctx): View => {
   return {
     update,
     relabel,
-    focus(list) {
-      for (const [name, el] of ctls) el.classList.toggle('is-dimmed', list !== null && !list.includes(name))
-    },
     destroy() {
       for (const c of cleanups) c()
       wrap.remove()

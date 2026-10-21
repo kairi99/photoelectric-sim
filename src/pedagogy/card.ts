@@ -76,14 +76,8 @@ export function mountLearn(root: HTMLElement, ctx: PedContext): Learn {
     if (on) document.documentElement.setAttribute('data-hide-answers', '')
     else document.documentElement.removeAttribute('data-hide-answers')
   }
-  const dimRegions = (controls: string[] | null): void => {
-    for (const [region, ctl] of [['table', 'record'], ['charts', 'fit']] as const) {
-      document.querySelector(`[data-region="${region}"]`)?.classList.toggle('is-dimmed', controls !== null && !controls.includes(ctl))
-    }
-  }
   const focusViews = (controls: string[] | null): void => {
     for (const v of ctx.views()) v.focus?.(controls)
-    dimRegions(controls)
   }
 
   const currentHint = (): string | null => {

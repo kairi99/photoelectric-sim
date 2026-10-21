@@ -4,7 +4,7 @@ import type { Lang } from '../i18n.ts'
 
 const HEADERS: Record<Lang, string[]> = {
   en: ['line', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'wait (s)', 'settled'],
-  es: ['raya', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'espera (s)', 'estable'],
+  es: ['línea', 'lambda (nm)', 'nu (THz)', 'U0 (V)', 'espera (s)', 'estable'],
 }
 const LINE_NAMES: Record<Lang, Record<string, string>> = {
   en: { yellow: 'yellow', green: 'green', blue: 'blue', violet: 'violet', uv: 'UV' },

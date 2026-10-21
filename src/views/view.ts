@@ -17,7 +17,7 @@ export interface View {
   update(): void
   /** Rebuild every label after a language change. */
   relabel(): void
-  /** Optional: dim the controls not listed (guided tasks). Dimmed controls still work. */
+  /** Optional: point out the controls a guided task needs (the 3D bench highlights their parts). Nothing is dimmed or disabled. */
   focus?(controls: string[] | null): void
   destroy(): void
 }
