@@ -1,6 +1,7 @@
 // Small DOM and geometry helpers shared by the bench and panel views. Geometry here is drawing math only
 // (angles, arc points, tick layout); no physics.
 import type { Lang } from '../i18n.ts'
+import { NEEDLE_MIN_FRAC } from '../apparatus/index.ts'
 
 const SVGNS = 'http://www.w3.org/2000/svg'
 type Attrs = Record<string, string | number>
@@ -108,7 +109,7 @@ export function opacityFromIntensity(intensity: number): number {
 // ---- meter dial (drawing only) ----------------------------------------------------------------------
 export const DIAL_SPAN_DEG = 110
 export function needleAngleDeg(fraction: number): number {
-  return (clamp(fraction, 0, 1) - 0.5) * DIAL_SPAN_DEG
+  return (clamp(fraction, NEEDLE_MIN_FRAC, 1) - 0.5) * DIAL_SPAN_DEG
 }
 export interface Tick {
   fraction: number

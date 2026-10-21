@@ -1,8 +1,10 @@
 // Teacher key generator: pure function from the physics model to Markdown (no DOM, no file access).
 // scripts/teacher-key.ts writes the result to docs/teacher-key.md.
-import { STRAY_PRESET_FRACTION } from '../apparatus/index.ts'
 import {
-  E_C, H_Js, IDEAL, LAB, R_CELL_DIRTY_Ohm, R_INPUT_Ohm, expectedReading_V, getLine, linearFit, nuFromLambda,
+  LAMP_DRIFT_REL, METER_CLASS_PCT, METER_GAIN_TYPICAL, STRAY_PRESET_FRACTION, ZERO_OFFSET_MAX_FRAC, ZERO_OFFSET_MIN_FRAC, ZERO_TOL_FRAC,
+} from '../apparatus/index.ts'
+import {
+  ANODE_ILLUM_FRACTION, E_C, H_Js, IDEAL, LAB, R_CELL_DIRTY_Ohm, R_INPUT_Ohm, expectedReading_V, getLine, linearFit, nuFromLambda,
   planckFromFit, steadyState_V,
 } from '../physics/index.ts'
 import type { CircuitInputs, HgLineId, Scenario } from '../physics/index.ts'
@@ -37,7 +39,7 @@ const SUCCESS: Record<string, string> = {
   intensity: `Two valid (settled and discharged) measurements of the same line, one at beam intensity ≥ ${BRIGHT_MIN} and one at ≤ ${DIM_MAX}.`,
   planck: `Four distinct valid lines (settled and discharged) and a fit with h within ${PLANCK_REL_TOL * 100} % of the Lab model value ${h34(expectedFitH_Js('lab'))}×10⁻³⁴ J·s (not of the true ${h34(H_Js)}).`,
   threshold: `Cathode Zn, lamp warm, the violet line aligned, key released ≥ ${THRESHOLD_WAIT_s} s ago and U < ${THRESHOLD_MAX_U_V * 1000} mV.`,
-  'error-sources': 'Dirty or stray light on, four distinct valid (settled and discharged) lines measured with the error active, and a fit available.',
+  'error-sources': 'Dirty, stray light or anode emission on, four distinct valid (settled and discharged) lines measured with the error active, and a fit available.',
 }
 
 export function teacherKey(): string {
@@ -72,6 +74,7 @@ export function teacherKey(): string {
   push(row('Explore, clean', ex), row('Lab, clean', lb))
   push(row('Explore, dirty photocell', plateaus(IDEAL, { ...WITH_INPUT, R_cell_Ohm: R_CELL_DIRTY_Ohm })))
   push(row(`Explore, stray light (${STRAY_PRESET_FRACTION})`, plateaus(IDEAL, { ...WITH_INPUT, stray_fraction: STRAY_PRESET_FRACTION })))
+  push(row(`Explore, anode emission (${ANODE_ILLUM_FRACTION})`, plateaus(IDEAL, { ...WITH_INPUT, anode_fraction: ANODE_ILLUM_FRACTION })))
   const hl = fitH(lb)
   const margin = (sign: number): number => {
     // worst case: +-0.02 V (needle reading) pushed in opposite directions at the ends of the line
@@ -84,23 +87,32 @@ export function teacherKey(): string {
     '',
     '### Why the clean Lab run is about −10 %',
     '',
-    `The Lab bench is not ideal: the cell leaks (2.2×10¹² Ω) so the high plateaus sag most, and a small stray-light fraction (${LAB.params.stray_fraction}) from bluer lines lifts the yellow and green plateaus. Both flatten the U0 vs ν line, so the clean Lab fit gives ${h34(hl.h)}×10⁻³⁴ J·s (${pct(hl.h)}). The leaflet's own bench gives 6.1×10⁻³⁴ (about −8 %). This is a property of the bench model, not an error of the student.`,
+    `The Lab bench is not ideal: the cell leaks (${(LAB.params.R_cell_Ohm! / 1e12).toFixed(2)}×10¹² Ω), the K-contaminated ring anode emits a back-current from scattered light (${ANODE_ILLUM_FRACTION * 100} % of each line reaches it), the Fermi–Dirac edge at room temperature fades the cutoff, and a small stray-light fraction (${LAB.params.stray_fraction}) from bluer lines lifts the yellow and green plateaus. Together these flatten the U0 vs ν line, so the clean Lab fit gives ${h34(hl.h)}×10⁻³⁴ J·s (${pct(hl.h)}). The leaflet's own bench gives 6.1×10⁻³⁴ (about −8 %). This is a property of the bench model, not an error of the student.`,
     '',
     `The \`planck\` task therefore tests h against the Lab model value ${h34(hl.h)}, with a ±${PLANCK_REL_TOL * 100} % window: ${h34(hl.h * (1 - PLANCK_REL_TOL))} to ${h34(hl.h * (1 + PLANCK_REL_TOL))}×10⁻³⁴ J·s. A needle misreading of up to 0.02 V in the worst pattern moves h only to ${h34(lo)}–${h34(hi)} (${((lo / hl.h - 1) * 100).toFixed(1)} % to ${((hi / hl.h - 1) * 100).toFixed(1)} %), so honest reading keeps a margin of about ${(PLANCK_REL_TOL * 100 - Math.max(Math.abs(lo / hl.h - 1), Math.abs(hi / hl.h - 1)) * 100).toFixed(1)} percentage points inside the limit. A single bad point (e.g. a line recorded without discharging) pushes the fit out of the window and triggers the hint.`,
   )
   push('', `True h = ${h34(H_Js)}×10⁻³⁴ J·s (e = ${(E_C / 1e-19).toFixed(4)}×10⁻¹⁹ C). The leaflet obtains 6.1×10⁻³⁴.`)
   push('The intercept of e·U0 vs ν is not the cathode work function (anode work function enters, leaflet eq. VII).', '')
 
-  push('## Error sources: plateaus (explore)', '', '| Line | Clean (V) | Dirty (V) | Stray light (V) |', '|---|---|---|---|')
+  push('## Error sources: plateaus (explore)', '', '| Line | Clean (V) | Dirty (V) | Stray light (V) | Anode emission (V) |', '|---|---|---|---|---|')
   const dirty = plateaus(IDEAL, { ...WITH_INPUT, R_cell_Ohm: R_CELL_DIRTY_Ohm })
   const stray = plateaus(IDEAL, { ...WITH_INPUT, stray_fraction: STRAY_PRESET_FRACTION })
-  VISIBLE_LINES.forEach((l, i) => push(`| ${name(l)} | ${v(ex[i]!)} | ${v(dirty[i]!)} | ${v(stray[i]!)} |`))
+  const anodeP = plateaus(IDEAL, { ...WITH_INPUT, anode_fraction: ANODE_ILLUM_FRACTION })
+  VISIBLE_LINES.forEach((l, i) => push(`| ${name(l)} | ${v(ex[i]!)} | ${v(dirty[i]!)} | ${v(stray[i]!)} | ${v(anodeP[i]!)} |`))
   push(
     '',
     '- **Dirty photocell** (leakage 10¹² Ω): every plateau sags, the high ones more, so the slope and h fall (see the table).',
-    '- **Stray light** (preset): photocurrent from the other, higher-U0 lines keeps the capacitor charged, so the low-frequency plateaus are lifted most and the slope falls. Because the explore source is bright, a stray fraction of only ~10⁻⁴ is enough; with more, yellow and green merge into one value.',
-    '- In Explore, either error switch also puts in the electrometer input resistance (10¹³ Ω) instead of the ideal 10²¹ Ω. Without it any stray current would charge every line to the UV U0 and h would be ~0.',
-    '- Both effects give a **lower** h, so the answer to the `error-sources` prediction is "Lower".',
+    '- **Stray light** (preset): photocurrent from the other, higher-U0 lines keeps the capacitor charged, so the low-frequency plateaus are lifted most and the slope falls. Because the explore source is bright, a stray fraction of only a few 10⁻⁴ is enough; with more, yellow and green merge into one value.',
+    '- **Anode emission** (the ring anode, work function far below the cathode, is hit by scattered light): its electrons are accelerated back to the cathode, so a reverse current flows that does not vanish at U0. Every plateau stops where the charging current falls to this back-current, below U0, and more for the high-frequency lines, so the slope and h fall.',
+    '- In Explore, any error switch also puts in the electrometer input resistance (10¹³ Ω) instead of the ideal 10²¹ Ω. Without it any stray current would charge every line to the UV U0 and h would be ~0.',
+    '- All three effects give a **lower** h, so the answer to the `error-sources` prediction is "Lower".',
+    '',
+    '## Lab instrument effects (not part of the plateaus above)',
+    '',
+    `- **Needle zero:** the analog needle starts with a seeded mechanical offset of ${(ZERO_OFFSET_MIN_FRAC * 3).toFixed(2)} to ${(ZERO_OFFSET_MAX_FRAC * 3).toFixed(2)} V (either sign) on the 3 V range. The student must zero it with the key held (the zero-adjust control). A reading recorded with the zero off by more than ${(ZERO_TOL_FRAC * 3 * 1000).toFixed(0)} mV triggers a coach nudge; the first-U0 tolerance (±${FIRST_U0_TOL_V} V) is of the same size as the offset, so a student who skips the zero adjust can miss it.`,
+    `- **Meter accuracy:** class ${METER_CLASS_PCT} (percent of full scale) is the bound; this instrument's seeded gain error is drawn within ±${((METER_GAIN_TYPICAL * METER_CLASS_PCT)).toFixed(1)} % of the reading.`,
+    `- **Lamp drift:** the line intensities wander slowly by up to ±${LAMP_DRIFT_REL * 100} % (tens of seconds); the plateau moves by well under 1 mV, far below the needle resolution.`,
+    '- **Capacitor dielectric absorption:** about 0.03 % of the charging voltage creeps back after a short discharge, a fraction of a millivolt, invisible on the needle.',
     '',
     '## Photon energies and the zinc threshold',
     '',

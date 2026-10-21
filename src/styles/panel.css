@@ -6,7 +6,10 @@
 }
 .panel h3 { margin: 0; font: var(--text-headline); }
 .panel .ctl-help { margin: 0; font: var(--text-footnote); color: var(--label-2); }
-.panel[data-mode='lab'] .only-explore { display: none; }
+.panel[data-mode='lab'] .only-explore, .panel[data-mode='explore'] .only-lab { display: none; }
+.zero-row { display: grid; gap: var(--space-1); }
+.zero-range { width: 100%; min-height: var(--touch); margin: 0; accent-color: var(--accent); touch-action: pan-y; }
+.zero-row .ctl-label { font: var(--text-callout); font-weight: 600; }
 .panel [hidden] { display: none !important; }
 
 /* Dial */

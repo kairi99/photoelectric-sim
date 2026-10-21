@@ -1,4 +1,5 @@
 import type { GuidedTask } from '../task.ts'
+import { ZERO_TOL_FRAC } from '../../apparatus/index.ts'
 import { expectedPlateau_V, isValid } from '../task.ts'
 
 /** Honest needle reading on the 3 V scale is about 0.02 V; allow a little more on top of meter noise. */
@@ -20,6 +21,7 @@ export const task: GuidedTask = {
     { when: (a) => a.lampOn && a.readout().lampBrightness < 0.99, key: 'warmUp' },
     { when: (a) => a.meterRange === 'OFF', key: 'meterOff' },
     { when: (a) => a.meterRange !== 'OFF' && a.meterRange !== 3, key: 'meterRange' },
+    { when: (a) => a.mode === 'lab' && a.meterRange === 3 && Math.abs(a.zeroErrorFrac()) > ZERO_TOL_FRAC && a.measurements.length === 0, key: 'zeroNeedle' },
     { when: (a) => a.lineOnCell() !== 'yellow', key: 'moveArm' },
     { when: (a) => !a.keyPressed && !a.hasReleased, key: 'pressKey' },
     { when: (a) => a.keyPressed, key: 'releaseKey' },

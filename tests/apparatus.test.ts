@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Apparatus, MAX_REAL_DT_s, STRAY_PRESET_FRACTION } from '../src/apparatus/index.ts'
-import { IDEAL, LAB, steadyState_V } from '../src/physics/index.ts'
+import {
+  Apparatus, LAMP_DRIFT_REL, MAX_REAL_DT_s, METER_CLASS_PCT, METER_GAIN_TYPICAL, STRAY_PRESET_FRACTION, ZERO_ADJUST_RANGE_FRAC, ZERO_OFFSET_MAX_FRAC,
+  ZERO_OFFSET_MIN_FRAC, ZERO_TOL_FRAC,
+} from '../src/apparatus/index.ts'
+import { IDEAL, LAB, limitVoltage_V, nuFromLambda, getLine, steadyState_V } from '../src/physics/index.ts'
 import type { HgLineId } from '../src/physics/index.ts'
 
 const VISIBLE: HgLineId[] = ['yellow', 'green', 'blue', 'violet']
@@ -460,5 +463,266 @@ describe('dischargedSinceAlign', () => {
     run(a, 20)
     a.record(0.5)
     expect(a.measurements[0]!.dischargedSinceAlign).toBe(false)
+  })
+})
+
+/** Hold the key until the capacitor is empty, then turn the zero screw until the needle reads 0 (what a student does). */
+function zeroNeedle(a: Apparatus): void {
+  a.pressKey()
+  run(a, 3)
+  for (let i = 0; i < 4; i++) {
+    const r = a.readout()
+    a.setZeroAdjust(a.zeroAdjust + r.needleValue_V! / ((r.meterRange as number) * ZERO_ADJUST_RANGE_FRAC))
+    run(a, 3)
+  }
+  a.releaseKey()
+}
+
+describe('multimeter mechanical zero (Lab)', () => {
+  const labMeter = (seed: number): Apparatus => {
+    const a = new Apparatus({ mode: 'lab', seed })
+    a.setRange(3)
+    return a
+  }
+  it('the needle starts a few hundredths of a volt off zero with the capacitor empty, with a seeded size and sign', () => {
+    const offs = new Set<number>()
+    for (let seed = 1; seed <= 30; seed++) {
+      const a = labMeter(seed)
+      const e = a.zeroError_V()
+      expect(Math.abs(e)).toBeGreaterThanOrEqual(ZERO_OFFSET_MIN_FRAC * 3 - 1e-12)
+      expect(Math.abs(e)).toBeLessThanOrEqual(ZERO_OFFSET_MAX_FRAC * 3 + 1e-12)
+      offs.add(Math.sign(e))
+      a.pressKey(); run(a, 5)
+      // key held, capacitor at 0: the needle shows the zero error (+ electrometer offset 2 mV, noise 3 mV)
+      expect(Math.abs(a.readout().needleValue_V! - e)).toBeLessThan(0.02)
+    }
+    expect(offs.size).toBe(2) // both signs occur over the seeds
+    expect(labMeter(5).zeroError_V()).toBe(labMeter(5).zeroError_V()) // deterministic per seed
+    expect(labMeter(5).zeroError_V()).not.toBe(labMeter(6).zeroError_V())
+  })
+  it('the zero-adjust screw can cancel any seeded offset, and the needle then reads 0 with the key held', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const a = labMeter(seed)
+      zeroNeedle(a)
+      expect(Math.abs(a.zeroErrorFrac())).toBeLessThanOrEqual(ZERO_TOL_FRAC)
+      a.pressKey(); run(a, 4)
+      expect(Math.abs(a.readout().needleValue_V!)).toBeLessThan(0.015)
+      expect(Math.abs(a.zeroAdjust)).toBeLessThanOrEqual(1)
+    }
+  })
+  it('shifts a reading by the zero error until it is adjusted (offset added to every reading)', () => {
+    const a = labMeter(4)
+    a.forceCapacitorVoltage_V(1.0)
+    const before = a.readout().needleValue_V!
+    a.setZeroAdjust(a.zeroAdjust + a.zeroErrorFrac() / ZERO_ADJUST_RANGE_FRAC)
+    const after = a.readout().needleValue_V!
+    expect(Math.abs(before - after)).toBeGreaterThan(0.025)
+    expect(Math.abs(after - 1.0 * (1 + a.meterGainError()))).toBeLessThan(1e-9)
+  })
+  it('Explore is the ideal instrument: no zero error, no gain error, and the adjust control does nothing', () => {
+    const a = new Apparatus({ mode: 'explore', seed: 9 })
+    a.setRange(3)
+    expect(a.zeroError_V()).toBe(0)
+    expect(a.meterGainError()).toBe(0)
+    a.setZeroAdjust(0.5)
+    expect(a.zeroAdjust).toBe(0)
+  })
+  it('records the zero error with each measurement, and reset restores the offset', () => {
+    const a = labMeter(3)
+    a.record(0.5)
+    expect(a.measurements[0]!.zeroErr_V).toBeCloseTo(a.zeroError_V(), 12)
+    zeroNeedle(a)
+    a.record(0.5)
+    expect(Math.abs(a.measurements[1]!.zeroErr_V)).toBeLessThan(ZERO_TOL_FRAC * 3 + 1e-9)
+    a.reset()
+    expect(a.zeroAdjust).toBe(0)
+    expect(Math.abs(a.zeroErrorFrac())).toBeGreaterThanOrEqual(ZERO_OFFSET_MIN_FRAC - 1e-12)
+  })
+  it('serialize/load keeps the zero-adjust position', () => {
+    const a = labMeter(2)
+    a.setZeroAdjust(-0.37)
+    const b = new Apparatus({ mode: 'lab', seed: 2 })
+    b.load(JSON.parse(JSON.stringify(a.serialize())))
+    expect(b.zeroAdjust).toBeCloseTo(-0.37, 12)
+  })
+})
+
+describe('multimeter accuracy class (Lab)', () => {
+  it('the seeded gain error stays well inside the class bound, differs between instruments, and scales the reading', () => {
+    expect(METER_CLASS_PCT).toBe(2.5)
+    const gains = new Set<number>()
+    for (let seed = 1; seed <= 40; seed++) {
+      const a = new Apparatus({ mode: 'lab', seed })
+      a.setRange(3)
+      const g = a.meterGainError()
+      expect(Math.abs(g)).toBeLessThanOrEqual(METER_GAIN_TYPICAL * (METER_CLASS_PCT / 100) + 1e-12)
+      gains.add(g)
+      // reading error at 2.9 V (near full scale) is within class % of full scale (3 V), after zeroing
+      a.forceCapacitorVoltage_V(2.9)
+      a.setZeroAdjust(a.zeroAdjust + a.zeroErrorFrac() / ZERO_ADJUST_RANGE_FRAC)
+      expect(Math.abs(a.readout().needleValue_V! - 2.9)).toBeLessThanOrEqual((METER_CLASS_PCT / 100) * 3)
+    }
+    expect(gains.size).toBeGreaterThan(30)
+  })
+})
+
+describe('slow lamp brightness drift (Lab)', () => {
+  const intensityRatio = (a: Apparatus): number => {
+    const l = a.spectrumOnWindow().find((x) => x.id === 'green')!
+    return l.intensity / (a.readout().lampBrightness * 0.9 * 1.0 * 1.0) // green: lamp 1.0 x glass 0.9
+  }
+  it('is bounded by about 1 %, deterministic for the seed, and actually wanders over tens of seconds', () => {
+    const trace = (seed: number): number[] => {
+      const a = new Apparatus({ mode: 'lab', seed })
+      a.setLamp(true)
+      a.setSpeed(5)
+      run(a, 70)
+      const out: number[] = []
+      for (let k = 0; k < 40; k++) { run(a, 5); out.push(intensityRatio(a)) }
+      return out
+    }
+    const t1 = trace(7)
+    expect(trace(7)).toEqual(t1)
+    expect(trace(8)).not.toEqual(t1)
+    for (const r of t1) expect(Math.abs(r - 1)).toBeLessThanOrEqual(LAMP_DRIFT_REL + 1e-9)
+    expect(Math.max(...t1) - Math.min(...t1)).toBeGreaterThan(0.002)
+  })
+  it('does not exist in Explore, and does not stop the "settled" badge in Lab', () => {
+    const ex = new Apparatus({ mode: 'explore' })
+    ex.setLamp(true); run(ex, 70)
+    expect(intensityRatio(ex)).toBeCloseTo(1, 12)
+    const a = new Apparatus({ mode: 'lab', seed: 7 })
+    a.setLamp(true); a.setRange(3); a.setSpeed(5)
+    run(a, 70)
+    a.setArm(a.linePosition('green'))
+    a.pressKey(); a.tick(2); a.releaseKey()
+    for (let i = 0; i < 40 && !a.isSettled(); i++) run(a, 5)
+    expect(a.isSettled()).toBe(true)
+  })
+  it('moves the plateau by only a few mV (it is a 1 % wobble of the intensity)', () => {
+    const a = new Apparatus({ mode: 'lab', seed: 7 })
+    a.setLamp(true); a.setRange(3); a.setSpeed(5)
+    run(a, 70)
+    a.setArm(a.linePosition('blue'))
+    a.pressKey(); a.tick(2); a.releaseKey()
+    run(a, 60)
+    const us: number[] = []
+    for (let k = 0; k < 40; k++) { run(a, 5); us.push(a.serialize().U_V) }
+    expect(Math.max(...us) - Math.min(...us)).toBeLessThan(0.01)
+  })
+})
+
+describe('explore anode-emission toggle (third error source)', () => {
+  const H = 6.62607015e-34
+  function fit(set: (a: Apparatus) => void): { h: number; U: number[]; flags: boolean[] } {
+    const a = new Apparatus({ mode: 'explore', seed: 5 })
+    set(a)
+    a.setLamp(true); a.setSpeed(20); run(a, 70)
+    const U: number[] = []
+    for (const id of VISIBLE) {
+      a.setArm(a.linePosition(id))
+      a.pressKey(); a.tick(2); a.releaseKey()
+      for (let i = 0; i < 300 && !a.isSettled(); i++) run(a, 20)
+      U.push(a.serialize().U_V)
+      a.record()
+    }
+    return { h: a.fitResult()!.h_Js, U, flags: a.measurements.map((m) => m.anode) }
+  }
+  it('lowers every plateau and h by a few percent, keeps the plateaus ordered, and is flagged on the measurements', () => {
+    const clean = fit(() => {})
+    const rev = fit((a) => a.setOverrides({ anode: true }))
+    expect(rev.flags.every(Boolean)).toBe(true)
+    expect(clean.flags.some(Boolean)).toBe(false)
+    rev.U.forEach((u, k) => expect(u).toBeLessThan(clean.U[k]! - 0.005))
+    for (let k = 1; k < 4; k++) expect(rev.U[k]!).toBeGreaterThan(rev.U[k - 1]! + 0.05)
+    const drop = 1 - rev.h / H
+    expect(drop).toBeGreaterThan(0.03) // documented: about -5.8 % vs the ideal fit (PARAMETERS.md)
+    expect(drop).toBeLessThan(0.1)
+    expect(clean.h / H).toBeGreaterThan(0.99)
+  })
+  it('is Explore-only and clears on reset', () => {
+    const lab = new Apparatus({ mode: 'lab' })
+    lab.setOverrides({ anode: true })
+    expect(lab.anode).toBe(false)
+    const ex = new Apparatus({ mode: 'explore' })
+    ex.setOverrides({ anode: true })
+    expect(ex.anode).toBe(true)
+    ex.reset()
+    expect(ex.anode).toBe(false)
+  })
+})
+
+describe('explore quartz optics option', () => {
+  it('replaces glass transmission: the 365 nm line then charges the cell far faster, and is brighter in the spectrum', () => {
+    const t90 = (quartz: boolean): number => {
+      const a = new Apparatus({ mode: 'explore' })
+      a.setOverrides({ quartz })
+      a.setLamp(true); a.setSpeed(20); run(a, 70)
+      a.setArm(a.linePosition('uv'))
+      a.pressKey(); a.tick(2); a.releaseKey()
+      const t0 = a.clock_s
+      const u0 = limitVoltage_V(nuFromLambda(getLine('uv').lambda_nm))
+      for (let i = 0; i < 2000; i++) {
+        run(a, 20)
+        if (a.serialize().U_V > 0.9 * u0) return a.clock_s - t0
+      }
+      return Infinity
+    }
+    expect(t90(true)).toBeLessThan(t90(false) / 5)
+    const g = new Apparatus({ mode: 'explore' })
+    const q = new Apparatus({ mode: 'explore' })
+    q.setOverrides({ quartz: true })
+    for (const a of [g, q]) { a.setLamp(true); run(a, 70) }
+    const uv = (a: Apparatus): number => a.spectrumOnWindow().find((l) => l.id === 'uv')!.intensity
+    expect(uv(q)).toBeGreaterThan(20 * uv(g))
+    expect(uv(g)).toBeLessThan(0.05)
+  })
+  it('does not count as an error source (no input resistance added) and the ideal U0 values stay true', () => {
+    const a = new Apparatus({ mode: 'explore', seed: 2 })
+    a.setOverrides({ quartz: true })
+    a.setLamp(true); a.setSpeed(20); run(a, 70)
+    a.setArm(a.linePosition('green'))
+    a.pressKey(); a.tick(2); a.releaseKey()
+    for (let i = 0; i < 300 && !a.isSettled(); i++) run(a, 20)
+    expect(Math.abs(a.serialize().U_V - steadyState_V({ ...IDEAL.params, optics: 'quartz', line: 'green' }))).toBeLessThan(0.006)
+    expect(Math.abs(a.serialize().U_V - limitVoltage_V(nuFromLambda(getLine('green').lambda_nm)))).toBeLessThan(0.006)
+  })
+  it('Lab ignores the option (glass optics only)', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    a.setOverrides({ quartz: true })
+    a.setLamp(true); run(a, 70)
+    expect(a.spectrumOnWindow().find((l) => l.id === 'uv')!.intensity).toBeLessThan(0.05)
+  })
+})
+
+describe('capacitor dielectric absorption in the Lab bench', () => {
+  it('a little voltage creeps back after the key is released in the dark, far below the needle resolution', () => {
+    const a = new Apparatus({ mode: 'lab', seed: 1 })
+    a.forceCapacitorVoltage_V(1.4)
+    a.setRange(3)
+    a.pressKey(); a.tick(2); a.releaseKey()
+    let peak = 0
+    a.setSpeed(5)
+    for (let i = 0; i < 60; i++) { run(a, 5); peak = Math.max(peak, a.serialize().U_V) }
+    expect(peak).toBeGreaterThan(1e-4)
+    expect(peak).toBeLessThan(1e-3)
+  })
+})
+
+describe('five-point fit with quartz optics (explore)', () => {
+  it('a UV point joins the U0 vs nu fit and the ideal instrument still returns the true h within 2 %', () => {
+    const a = new Apparatus({ mode: 'explore', seed: 4 })
+    a.setOverrides({ quartz: true })
+    a.setLamp(true); a.setSpeed(20); run(a, 70)
+    for (const id of [...VISIBLE, 'uv'] as HgLineId[]) {
+      a.setArm(a.linePosition(id))
+      a.pressKey(); a.tick(2); a.releaseKey()
+      for (let i = 0; i < 300 && !a.isSettled(); i++) run(a, 20)
+      a.record()
+    }
+    expect(a.measurements.map((m) => m.lineId)).toContain('uv')
+    const fit = a.fitResult()!
+    expect(fit.n).toBe(5)
+    expect(Math.abs(fit.h_Js / 6.62607015e-34 - 1)).toBeLessThan(0.02)
   })
 })

@@ -1,11 +1,14 @@
 // Device logic for the LD compact arrangement (558 79): lamp, swivelling arm, key switch, capacitor,
 // electrometer and multimeter. DOM-free; physics comes only from ../physics/index.ts.
 import {
+  ANODE_ILLUM_FRACTION,
   C_TOTAL_F,
   CATHODES,
   HG_LINES,
   IDEAL,
   KEY_TAU_s,
+  daKeyHeld_V,
+  linePower,
   MAX_STEP_V,
   LAB,
   R_CELL_DIRTY_Ohm,
@@ -21,7 +24,7 @@ import {
   totalLeakage_Ohm,
   withReadingNoise,
 } from '../physics/index.ts'
-import type { CathodeId, HgLineId, PhotoOptions, Scenario } from '../physics/index.ts'
+import type { CathodeId, HgLineId, OpticsId, PhotoOptions, Scenario } from '../physics/index.ts'
 
 export type Mode = 'explore' | 'lab'
 export type MeterRange = 'OFF' | 0.1 | 0.3 | 1 | 3 | 10 | 30
@@ -44,11 +47,33 @@ export const BEAM_INTENSITY_MIN = 0.1
 export const LINE_SIGMA = 0.025 // line image width on the arm scale (1 sigma, arm fraction)
 export const ALIGNED_OVERLAP = 0.9
 /**
- * Stray-light fraction the "stray light" switch applies (explore), PARAMETERS.md. Tiny because the explore source is
- * bright (IDEAL.I_ref_A) and the stray current must compete with a leakage of only ~1e-13 A at 1 V; a few 1e-5 is
- * already enough to pull the weak low-frequency plateaus up. Chosen so the fitted h falls by ~10 %.
+ * Stray-light fraction the "stray light" switch applies (explore), PARAMETERS.md. Small because the explore source is
+ * bright (IDEAL.I_ref_A) and the stray current must compete with a leakage of only ~1e-13 A at 1 V; a few 1e-4 is
+ * already enough to pull the weak low-frequency plateau up. Chosen (scan, PARAMETERS.md) so the fitted h falls by ~10 %
+ * while the four plateaus stay strictly increasing (yellow and green merge for larger fractions).
  */
-export const STRAY_PRESET_FRACTION = 8.4e-5
+export const STRAY_PRESET_FRACTION = 2.6e-4
+/**
+ * Accuracy class of the analog multimeter, in percent of full scale (ASSUMED 2.5, the class of a simple analog
+ * multimeter; PARAMETERS.md). The error bound of a reading on range r is METER_CLASS_PCT/100 x r.
+ */
+export const METER_CLASS_PCT = 2.5
+/**
+ * A given instrument is typically well inside its class bound: its seeded gain error is drawn uniformly within
+ * +-METER_GAIN_TYPICAL x the class, i.e. +-1 % of the reading for class 2.5. ASSUMED.
+ */
+export const METER_GAIN_TYPICAL = 0.4
+/** Seeded mechanical zero offset of the needle (Lab): magnitude between these fractions of full scale (0.03 to 0.06 V on the 3 V range), random sign. ASSUMED. */
+export const ZERO_OFFSET_MIN_FRAC = 0.01
+export const ZERO_OFFSET_MAX_FRAC = 0.02
+/** The zero-adjust screw shifts the needle by +-this fraction of full scale (enough to cancel any seeded offset). */
+export const ZERO_ADJUST_RANGE_FRAC = 0.04
+/** A needle zero error below this fraction of full scale (0.015 V on 3 V, under one fine division) counts as zeroed. */
+export const ZERO_TOL_FRAC = 0.005
+/** The analog needle can swing slightly below the zero mark before its stop (fraction of full scale). */
+export const NEEDLE_MIN_FRAC = -0.06
+/** Slow lamp brightness wander in Lab: largest relative deviation of the line intensities (ASSUMED 1 %). */
+export const LAMP_DRIFT_REL = 0.01
 const NOISE = { explore: { sigma_V: 0.0005, offset_V: 0 }, lab: { sigma_V: 0.003, offset_V: 0.002 } } as const
 const AMBIENT_REL = 0.01 // room-light contribution relative to a fully open window
 const WAITED_s = 30
@@ -93,6 +118,10 @@ export interface Measurement {
   dirty: boolean
   /** Explore override "stray light" active when recorded. */
   stray: boolean
+  /** Explore override "anode emission" (reverse photocurrent) active when recorded. */
+  anode: boolean
+  /** Needle zero error at record time (V on the range in use, signed); always 0 in Explore. Lab: nonzero until the student zeroes. */
+  zeroErr_V: number
   /**
    * True only if, since the line was last aligned on the cell, the key was held until the capacitor read below
    * DISCHARGED_V and then released. False means leftover charge from another line may be in the reading.
@@ -134,6 +163,8 @@ export interface Readout {
   keyPressed: boolean
   armPosition: number
   settled: boolean
+  /** Needle zero error in V on the current range (mechanical offset minus the zero-adjust screw); 0 in Explore or with the meter off. */
+  zeroError_V: number
 }
 
 export interface Controls {
@@ -149,6 +180,9 @@ export interface Controls {
   cathode: CathodeId
   stray_fraction: number | null
   dirty: boolean
+  anode: boolean
+  quartz: boolean
+  zeroAdjust: number
   roomLights: boolean
   seed: number
   U_V: number
@@ -170,6 +204,7 @@ export interface ApparatusOptions {
   seed?: number
 }
 
+type CircuitOpts = PhotoOptions & { R_cell_Ohm?: number; R_input_Ohm?: number; C_da_F?: number; R_da_Ohm?: number }
 const clamp = (x: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, x))
 
 export class Apparatus {
@@ -186,6 +221,12 @@ export class Apparatus {
   cathode: CathodeId = 'photocell'
   stray_fraction: number | null = null // explore override; null = scenario default
   dirty = false
+  /** Explore override: reverse photocurrent from the K-contaminated anode (third error toggle). */
+  anode = false
+  /** Explore option: fused-quartz optics instead of glass (the 365 nm line reaches the cell). */
+  quartz = false
+  /** Position of the zero-adjust screw, -1..1 (Lab only); the seeded mechanical offset must be cancelled with it. */
+  zeroAdjust = 0
   roomLights = false
   readonly seed: number
 
@@ -200,6 +241,8 @@ export class Apparatus {
   private lampWarm_s = 0
   private brightness = 0
   private U_V = 0
+  /** Voltage on the dielectric-absorption branch capacitor (Lab); equals U_V once the branch has equilibrated. */
+  private Uda_V = 0
   private meterValue_V = 0
   private needle_V = 0
   private settleTime_s = 0
@@ -213,6 +256,11 @@ export class Apparatus {
   /** ...and the key was released afterwards. */
   private dischargedOk = false
   private rng: () => number
+  /** Seeded instrument errors (Lab only; all zero in Explore). Drawn from a separate stream so the reading noise is unchanged. */
+  private zeroOffsetFrac = 0
+  private gainError = 0
+  private driftPhase: number[] = [0, 0, 0]
+  private driftPeriod_s: number[] = [60, 40, 25]
   private history: HistoryPoint[] = []
   private histEvery_s = CHUNK_s
   private histNext_s = 0
@@ -259,10 +307,15 @@ export class Apparatus {
     this.cathode = 'photocell'
     this.stray_fraction = null
     this.dirty = false
+    this.anode = false
+    this.quartz = false
+    this.zeroAdjust = 0
     this.roomLights = this.mode === 'explore'
     this.clock_s = 0
     this.releaseTime_s = 0
     this.U_V = 0
+    this.Uda_V = 0
+    this.seedInstrument()
     this.meterValue_V = 0
     this.needle_V = 0
     const hadMeasurements = this.measurements.length > 0
@@ -276,6 +329,22 @@ export class Apparatus {
     this.resetRelease()
     if (hadMeasurements) this.emit('measurements', undefined)
     this.changed()
+  }
+
+  /** Draw the Lab instrument errors (meter zero offset and gain, lamp drift) from the seed; Explore is the ideal instrument. */
+  private seedInstrument(): void {
+    if (this.mode !== 'lab') {
+      this.zeroOffsetFrac = 0
+      this.gainError = 0
+      this.driftPhase = [0, 0, 0]
+      return
+    }
+    const r = mulberry32((this.seed ^ 0x9e3779b9) >>> 0)
+    const sign = r() < 0.5 ? -1 : 1
+    this.zeroOffsetFrac = sign * (ZERO_OFFSET_MIN_FRAC + (ZERO_OFFSET_MAX_FRAC - ZERO_OFFSET_MIN_FRAC) * r())
+    this.gainError = (2 * r() - 1) * METER_GAIN_TYPICAL * (METER_CLASS_PCT / 100)
+    this.driftPhase = [r() * 2 * Math.PI, r() * 2 * Math.PI, r() * 2 * Math.PI]
+    this.driftPeriod_s = [70, 37, 23].map((p) => p * (0.85 + 0.3 * r()))
   }
 
   private resetRelease(): void {
@@ -298,7 +367,8 @@ export class Apparatus {
     return {
       mode: this.mode, lampOn: this.lampOn, lampWarm_s: this.lampWarm_s, armPosition: this.armPosition,
       windowCover: this.windowCover, beamIntensity: this.beamIntensity, keyPressed: this.keyPressed, meterRange: this.meterRange, speed: this.speed,
-      cathode: this.cathode, stray_fraction: this.stray_fraction, dirty: this.dirty, roomLights: this.roomLights,
+      cathode: this.cathode, stray_fraction: this.stray_fraction, dirty: this.dirty, anode: this.anode, quartz: this.quartz,
+      zeroAdjust: this.zeroAdjust, roomLights: this.roomLights,
       seed: this.seed, U_V: this.U_V,
     }
   }
@@ -319,8 +389,12 @@ export class Apparatus {
     if (c.cathode !== undefined) this.cathode = c.cathode
     if (c.stray_fraction !== undefined) this.stray_fraction = c.stray_fraction
     if (c.dirty !== undefined) this.dirty = c.dirty
+    if (c.anode !== undefined) this.anode = c.anode
+    if (c.quartz !== undefined) this.quartz = c.quartz
+    if (c.zeroAdjust !== undefined) this.zeroAdjust = this.mode === 'lab' ? clamp(c.zeroAdjust, -1, 1) : 0
     if (c.roomLights !== undefined) this.roomLights = c.roomLights
     if (c.U_V !== undefined) this.U_V = Math.max(0, c.U_V)
+    this.Uda_V = this.U_V
     this.needle_V = this.U_V
     this.resetRelease()
     this.changed()
@@ -371,12 +445,37 @@ export class Apparatus {
     this.changed()
   }
   /** Explore-only overrides (ignored in lab). */
-  setOverrides(o: { cathode?: CathodeId; stray_fraction?: number | null; dirty?: boolean }): void {
+  setOverrides(o: { cathode?: CathodeId; stray_fraction?: number | null; dirty?: boolean; anode?: boolean; quartz?: boolean }): void {
     if (this.mode !== 'explore') return
     if (o.cathode !== undefined && o.cathode in CATHODES) this.cathode = o.cathode
     if (o.stray_fraction !== undefined) this.stray_fraction = o.stray_fraction === null ? null : Math.max(0, o.stray_fraction)
     if (o.dirty !== undefined) this.dirty = o.dirty
+    if (o.anode !== undefined) this.anode = o.anode
+    if (o.quartz !== undefined) this.quartz = o.quartz
     this.changed()
+  }
+  /**
+   * Zero-adjust screw of the multimeter (Lab only), -1..1. The needle starts with a seeded mechanical offset
+   * (see zeroError_V); with the key held and the capacitor at 0 the student turns this until the needle reads 0.
+   */
+  setZeroAdjust(v: number): void {
+    if (this.mode !== 'lab' || !Number.isFinite(v)) return
+    this.zeroAdjust = clamp(v, -1, 1)
+    this.changed()
+  }
+  /** Seeded relative gain error of the meter (Lab; 0 in Explore): within +-METER_GAIN_TYPICAL x METER_CLASS_PCT/100. */
+  meterGainError(): number {
+    return this.gainError
+  }
+  /** Mechanical zero error of the needle as a fraction of full scale (seeded offset minus the screw; 0 in Explore). */
+  zeroErrorFrac(): number {
+    return this.mode === 'lab' ? this.zeroOffsetFrac - this.zeroAdjust * ZERO_ADJUST_RANGE_FRAC : 0
+  }
+  /** Value the scale shows for a true meter value: gain error (within the accuracy class) and zero error (Lab). */
+  private displayed(v_V: number): number {
+    const r = this.rangeValue()
+    if (r === null) return v_V
+    return v_V * (1 + this.gainError) + this.zeroErrorFrac() * r
   }
   /** Room lit or dark. Lab: adds stray light (see ambientWeight). Explore: purely visual, the ideal instrument ignores it. */
   setRoomLights(on: boolean): void {
@@ -386,6 +485,7 @@ export class Apparatus {
   /** Set the capacitor voltage directly (task initial states, tests). */
   forceCapacitorVoltage_V(U_V: number): void {
     this.U_V = Math.max(0, U_V)
+    this.Uda_V = this.U_V
     this.needle_V = this.U_V
     this.changed()
   }
@@ -440,7 +540,7 @@ export class Apparatus {
         position,
         reachable: position >= 0 && position <= 1,
         overlap: this.overlap(l.id),
-        intensity: l.relPower * this.brightness * this.effectiveBeam(),
+        intensity: linePower(l.id, this.optics()) * this.brightness * this.driftFactor() * this.effectiveBeam(),
       }
     })
   }
@@ -461,18 +561,35 @@ export class Apparatus {
   private scenario(): Scenario {
     return this.mode === 'lab' ? LAB : IDEAL
   }
+  /** Optics train in the beam: glass (default and always in Lab) or the Explore quartz option. */
+  private optics(): OpticsId {
+    return this.mode === 'explore' && this.quartz ? 'quartz' : 'glass'
+  }
+  /**
+   * Slow wander of the lamp output (Lab): 1 + LAMP_DRIFT_REL x a normalised sum of three sinusoids with seeded
+   * phases and periods of about 23, 37 and 70 s. Deterministic in the clock, bounded by +-LAMP_DRIFT_REL, 1 in Explore.
+   * Lives here (device), not in the physics, which only knows the nominal intensity.
+   */
+  private driftFactor(): number {
+    if (this.mode !== 'lab') return 1
+    const w = [0.5, 0.3, 0.2]
+    let x = 0
+    for (let k = 0; k < 3; k++) x += w[k]! * Math.sin((2 * Math.PI * this.clock_s) / this.driftPeriod_s[k]! + this.driftPhase[k]!)
+    return 1 + LAMP_DRIFT_REL * x
+  }
   /** Beam attenuation actually applied (the lab has no filter). */
   private effectiveBeam(): number {
     return this.mode === 'explore' ? this.beamIntensity : 1
   }
   private errorToggleOn(): boolean {
-    return this.mode === 'explore' && (this.dirty || (this.stray_fraction ?? 0) > 0)
+    return this.mode === 'explore' && (this.dirty || this.anode || (this.stray_fraction ?? 0) > 0)
   }
-  private photoOpts(): PhotoOptions & { R_cell_Ohm?: number; R_input_Ohm?: number } {
+  private photoOpts(): CircuitOpts {
     const p = this.scenario().params
-    const o: PhotoOptions & { R_cell_Ohm?: number; R_input_Ohm?: number } = { ...p, beamIntensity: this.effectiveBeam() }
+    const o: CircuitOpts = { ...p, beamIntensity: this.effectiveBeam(), optics: this.optics() }
     if (this.mode === 'explore') {
       o.cathode = this.cathode
+      if (this.anode) o.anode_fraction = ANODE_ILLUM_FRACTION
       if (this.stray_fraction !== null) o.stray_fraction = this.stray_fraction
       if (this.dirty) o.R_cell_Ohm = R_CELL_DIRTY_Ohm
       // A real bench always has the electrometer input resistance; the ideal 1e21 Ohm would let any stray current
@@ -491,10 +608,10 @@ export class Apparatus {
   }
 
   /** Weighted multi-line photocurrent (A) and its slope (A/V) at voltage U. */
-  private currents(U: number, ov: { id: HgLineId; w: number }[], o: ReturnType<Apparatus['photoOpts']>, ambient: number): { I: number; dI: number } {
+  private currents(U: number, ov: { id: HgLineId; w: number }[], o: CircuitOpts, ambient: number, drift: number): { I: number; dI: number } {
     let I = 0
     let dI = 0
-    const b = this.brightness
+    const b = this.brightness * drift
     for (const { id, w } of ov) {
       I += b * w * photocurrent_A(U, id, o)
       dI += b * w * photocurrentSlope_AperV(U, id, o)
@@ -513,30 +630,41 @@ export class Apparatus {
     return Math.max(...HG_LINES.map((l) => maxContributingU0_V(l.id, { ...o, stray_fraction: 1 })))
   }
 
+  /** Advance the capacitor (and its dielectric-absorption branch) by dt; returns the new U and stores Uda_V. */
   private integrate(U0: number, dt: number): number {
-    if (this.keyPressed) return U0 * Math.exp(-dt / KEY_TAU_s)
     const o = this.photoOpts()
+    if (this.keyPressed) {
+      this.Uda_V = daKeyHeld_V(U0, this.Uda_V, dt, o)
+      return U0 * Math.exp(-dt / KEY_TAU_s)
+    }
     const ov = this.overlaps()
     const ambient = this.ambientWeight()
+    const drift = this.driftFactor()
     const C = C_TOTAL_F
     const G = 1 / totalLeakage_Ohm({ ...o, line: 'yellow' })
+    const Rda = o.R_da_Ohm && o.C_da_F ? o.R_da_Ohm : 0
+    const Cda = o.C_da_F ?? 0
     const Umax = this.maxU0_V()
-    const f = (U: number): number => (this.currents(U, ov, o, ambient).I - U * G) / C
+    const fU = (U: number, Ud: number): number => (this.currents(U, ov, o, ambient, drift).I - U * G - (Rda ? (U - Ud) / Rda : 0)) / C
+    const fD = (U: number, Ud: number): number => (Rda ? (U - Ud) / (Rda * Cda) : 0)
     let U = U0
+    let Ud = this.Uda_V
     let t = 0
     while (t < dt) {
-      const rate = (-this.currents(U, ov, o, ambient).dI + G) / C
+      const rate = (-this.currents(U, ov, o, ambient, drift).dI + G) / C
       let h = Math.min(dt - t, rate > 0 ? 0.1 / rate : dt)
-      const k1 = f(U)
-      h = Math.min(h, MAX_STEP_V / Math.max(Math.abs(k1), 1e-12)) // do not jump over the kink of the saturated F(U)
+      const a1 = fU(U, Ud), b1 = fD(U, Ud)
+      h = Math.min(h, MAX_STEP_V / Math.max(Math.abs(a1), 1e-12)) // do not jump over the kink of the saturated F(U)
       h = Math.max(h, Math.min(dt - t, 1e-3))
-      const k2 = f(U + 0.5 * h * k1)
-      const k3 = f(U + 0.5 * h * k2)
-      const k4 = f(U + h * k3)
-      U += (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4)
+      const a2 = fU(U + 0.5 * h * a1, Ud + 0.5 * h * b1), b2 = fD(U + 0.5 * h * a1, Ud + 0.5 * h * b1)
+      const a3 = fU(U + 0.5 * h * a2, Ud + 0.5 * h * b2), b3 = fD(U + 0.5 * h * a2, Ud + 0.5 * h * b2)
+      const a4 = fU(U + h * a3, Ud + h * b3), b4 = fD(U + h * a3, Ud + h * b3)
+      U += (h / 6) * (a1 + 2 * a2 + 2 * a3 + a4)
+      Ud += (h / 6) * (b1 + 2 * b2 + 2 * b3 + b4)
       U = clamp(Number.isFinite(U) ? U : 0, 0, Umax)
       t += h
     }
+    this.Uda_V = Number.isFinite(Ud) ? Ud : U
     return U
   }
 
@@ -557,9 +685,7 @@ export class Apparatus {
       this.lampWarm_s += h
       this.brightness = this.brightnessFromWarm(this.lampWarm_s)
     }
-    const Uold = this.U_V
-    this.U_V = this.integrate(Uold, h)
-    const rate = (this.U_V - Uold) / h
+    this.U_V = this.integrate(this.U_V, h)
     const since = this.clock_s - this.releaseTime_s
 
     // plateau detector: projected remaining rise = |dU/dt| x local time constant (linearised C / (G - dI/dU))
@@ -568,8 +694,13 @@ export class Apparatus {
     if (eligible) {
       const o = this.photoOpts()
       const G = 1 / totalLeakage_Ohm({ ...o, line: 'yellow' })
-      const dI = this.currents(this.U_V, this.overlaps(), o, this.ambientWeight()).dI
-      remaining_V = Math.abs(rate) * (C_TOTAL_F / Math.max(G - dI, 1e-30))
+      const ov = this.overlaps()
+      const amb = this.ambientWeight()
+      // Charging rate of the NOMINAL lamp (no slow brightness wander): "settled" is about the charging reaching its
+      // plateau, not about the lamp's ~1 % drift moving the plateau.
+      const cur = this.currents(this.U_V, ov, o, amb, 1)
+      const rate = (cur.I - this.U_V * G) / C_TOTAL_F
+      remaining_V = Math.abs(rate) * (C_TOTAL_F / Math.max(G - cur.dI, 1e-30))
     }
     if (eligible && remaining_V < Math.max(SETTLE_REMAIN_V, SETTLE_REMAIN_REL * this.U_V)) this.settleTime_s += h
     else this.settleTime_s = 0
@@ -585,10 +716,11 @@ export class Apparatus {
     if (this.meterRange !== 'OFF') {
       this.needle_V += (this.meterValue_V - this.needle_V) * (1 - Math.exp(-h / NEEDLE_TAU_s))
     }
+    const shown = this.displayed(this.meterValue_V)
 
     // history
     if (!this.keyPressed && this.meterRange !== 'OFF' && this.clock_s >= this.histNext_s) {
-      this.history.push({ t_s: since, U_V: this.meterValue_V })
+      this.history.push({ t_s: since, U_V: shown })
       this.histNext_s = this.clock_s + this.histEvery_s
       if (this.history.length >= MAX_HISTORY) {
         this.history = this.history.filter((_, i) => i % 2 === 0)
@@ -617,11 +749,11 @@ export class Apparatus {
   needleFraction(): number {
     const r = this.rangeValue()
     if (r === null) return 0
-    return clamp(this.needle_V / r, 0, 1)
+    return clamp(this.displayed(this.needle_V) / r, NEEDLE_MIN_FRAC, 1)
   }
   overRange(): boolean {
     const r = this.rangeValue()
-    return r !== null && this.needle_V > r
+    return r !== null && this.displayed(this.needle_V) > r
   }
   isSettled(): boolean {
     return this.settledNow
@@ -632,8 +764,8 @@ export class Apparatus {
       mode: this.mode,
       clock_s: this.clock_s,
       U_V: this.mode === 'explore' ? this.U_V : null,
-      meterValue_V: off ? null : this.meterValue_V,
-      needleValue_V: off ? null : this.needle_V,
+      meterValue_V: off ? null : this.displayed(this.meterValue_V),
+      needleValue_V: off ? null : this.displayed(this.needle_V),
       needleFraction: this.needleFraction(),
       overRange: this.overRange(),
       meterRange: this.meterRange,
@@ -644,7 +776,13 @@ export class Apparatus {
       keyPressed: this.keyPressed,
       armPosition: this.armPosition,
       settled: this.settledNow,
+      zeroError_V: this.zeroError_V(),
     }
+  }
+  /** Needle zero error in V on the current range (0 with the meter off or in Explore). */
+  zeroError_V(): number {
+    const r = this.rangeValue()
+    return r === null ? 0 : this.zeroErrorFrac() * r
   }
   /** Ring buffer of (t since release, noisy meter U) for the live chart (a copy). */
   getHistory(): HistoryPoint[] {
@@ -658,7 +796,7 @@ export class Apparatus {
     if (valueTyped_V === undefined) {
       if (this.mode === 'lab') return { ok: false, error: 'value-required' }
       if (this.meterRange === 'OFF') return { ok: false, error: 'meter-off' }
-      v = this.needle_V
+      v = this.displayed(this.needle_V)
     } else {
       v = valueTyped_V
       if (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 30) return { ok: false, error: 'invalid-value' }
@@ -675,6 +813,8 @@ export class Apparatus {
       beamIntensity: this.effectiveBeam(),
       dirty: this.mode === 'explore' && this.dirty,
       stray: this.mode === 'explore' && (this.stray_fraction ?? 0) > 0,
+      anode: this.mode === 'explore' && this.anode,
+      zeroErr_V: this.zeroError_V(),
       dischargedSinceAlign: this.dischargedOk,
     }
     this.measurements.push(m)

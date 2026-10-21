@@ -323,6 +323,8 @@ export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
   }
   const setStrayChk = mkToggle('stray', 'only-explore', (v) => a.setOverrides({ stray_fraction: v ? STRAY_PRESET : null }), () => S().stray)
   const setDirtyChk = mkToggle('dirty', 'only-explore', (v) => a.setOverrides({ dirty: v }), () => S().dirty)
+  const setAnodeChk = mkToggle('anode', 'only-explore', (v) => a.setOverrides({ anode: v }), () => S().anode)
+  const setQuartzChk = mkToggle('quartz', 'only-explore', (v) => a.setOverrides({ quartz: v }), () => S().quartz)
   const setRoomChk = mkToggle('roomLights', '', (v) => a.setRoomLights(v), () => S().roomLights)
   const roomHelp = htmlEl('p', { class: 'ctl-help' }, ctls.get('roomLights')!)
   relabelers.push(() => { roomHelp.textContent = a.mode === 'lab' ? S().roomLightsHelpLab : S().roomLightsHelpExplore })
@@ -462,6 +464,8 @@ export const mountBench = (root: HTMLElement, ctx: ViewContext): BenchView => {
     setCathodeVal(a.cathode)
     setStrayChk(String(a.stray_fraction !== null && a.stray_fraction > 0))
     setDirtyChk(String(a.dirty))
+    setAnodeChk(String(a.anode))
+    setQuartzChk(String(a.quartz))
     setRoomChk(String(a.roomLights))
     const rh = a.mode === 'lab' ? s.roomLightsHelpLab : s.roomLightsHelpExplore
     if (roomHelp.textContent !== rh) roomHelp.textContent = rh

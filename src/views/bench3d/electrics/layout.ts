@@ -1,6 +1,7 @@
 // Pure layout helpers for the 3D electrics: knob detents, needle angle, dial tick layout, socket and cable coordinates.
 // No three.js and no DOM here, so the numbers can be unit-tested. Units: cm, y up (see ../units.ts).
 import type { MeterRange } from '../../../apparatus/index.ts'
+import { NEEDLE_MIN_FRAC } from '../../../apparatus/index.ts'
 import { needleAngleDeg, scaleTicks } from '../../benchkit.ts'
 
 export type V3 = readonly [number, number, number]
@@ -16,7 +17,7 @@ export function knobAngleDeg(range: MeterRange): number {
 /** Needle angle (deg, clockwise) for the readout: the same mapping as the 2D dial, left stop when OFF, pinned when over range. */
 export function needleTargetFraction(r: { meterRange: MeterRange; needleFraction: number; overRange: boolean }): number {
   if (r.meterRange === 'OFF') return 0
-  return r.overRange ? 1 : Math.min(1, Math.max(0, r.needleFraction))
+  return r.overRange ? 1 : Math.min(1, Math.max(NEEDLE_MIN_FRAC, r.needleFraction))
 }
 export const needleTargetDeg = (r: { meterRange: MeterRange; needleFraction: number; overRange: boolean }): number =>
   needleAngleDeg(needleTargetFraction(r))

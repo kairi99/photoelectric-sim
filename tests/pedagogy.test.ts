@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Apparatus } from '../src/apparatus/index.ts'
+import { Apparatus, ZERO_ADJUST_RANGE_FRAC, ZERO_TOL_FRAC } from '../src/apparatus/index.ts'
 import type { Mode } from '../src/apparatus/index.ts'
 import { H_Js } from '../src/physics/index.ts'
 import type { HgLineId } from '../src/physics/index.ts'
@@ -25,10 +25,22 @@ function run(a: Apparatus, sim_s: number): void {
   const step = a.speed
   for (let t = 0; t < sim_s - 1e-9; t += step) a.tick(1)
 }
+/** Lab: turn the zero screw until the needle reads 0 (the capacitor is empty at the start, so the key is not needed here). */
+function zeroNeedle(a: Apparatus): void {
+  a.setSpeed(5)
+  for (let i = 0; i < 4; i++) {
+    run(a, 5)
+    const r = a.readout()
+    if (r.needleValue_V === null) return
+    a.setZeroAdjust(a.zeroAdjust + r.needleValue_V / ((r.meterRange as number) * ZERO_ADJUST_RANGE_FRAC))
+  }
+  run(a, 5)
+}
 function warmUp(a: Apparatus): void {
   if (!a.lampOn) a.setLamp(true)
   if (a.mode === 'lab' && a.meterRange === 'OFF') a.setRange(3)
   a.setSpeed(a.mode === 'lab' ? 5 : 20)
+  if (a.mode === 'lab') zeroNeedle(a)
   run(a, 70)
 }
 /** Discharge, release, wait for the plateau, record (typed value rounded like a careful needle reading). */
@@ -69,6 +81,36 @@ const SOLUTIONS: Record<string, (a: Apparatus) => void> = {
     for (const id of VISIBLE_LINES) measure(a, id)
   },
 }
+
+describe('anode emission and the needle zero in the tasks', () => {
+  it('error-sources can also be completed with the anode-emission toggle alone', () => {
+    const t = TASKS.find((x) => x.id === 'error-sources')!
+    const a = new Apparatus({ mode: 'explore' })
+    applyInitial(a, t)
+    expect(t.hints.find((h) => h.key === 'toggleError')!.when(a)).toBe(true)
+    a.setOverrides({ anode: true })
+    expect(t.hints.find((h) => h.key === 'toggleError')!.when(a)).toBe(false)
+    warmUp(a)
+    for (const id of VISIBLE_LINES) measure(a, id)
+    expect(a.measurements.every((m) => m.anode)).toBe(true)
+    expect(t.success(a)).toBe(true)
+    expect(a.fitResult()!.h_Js).toBeLessThan(H_Js)
+    expect(t.controls).toContain('anode')
+  })
+  it('first-u0 hints at the zero adjust until the needle is zeroed', () => {
+    const t = TASKS.find((x) => x.id === 'first-u0')!
+    const a = new Apparatus({ mode: 'lab', seed: 3 })
+    applyInitial(a, t)
+    const hint = () => t.hints.find((h) => h.key === 'zeroNeedle')!.when(a)
+    expect(hint()).toBe(false) // meter still off
+    a.setRange(3)
+    expect(hint()).toBe(true)
+    zeroNeedle(a)
+    expect(hint()).toBe(false)
+    expect(en.hints.zeroNeedle).toMatch(/zero/i)
+    expect(es.hints.zeroNeedle).toMatch(/cero/i)
+  })
+})
 
 describe('pedagogy i18n', () => {
   it('en and es have identical keys, including every task field', () => {
@@ -284,6 +326,19 @@ describe('procedure checklist', () => {
     expect(done(a)).toContain('line')
     expect(currentStep(checklistState(a))).toBe(checklistState(a).findIndex((i) => i.id === 'discharge'))
   })
+  it('the zero step ticks only once the needle is zeroed (Lab), and is always ticked in explore', () => {
+    const a = new Apparatus({ mode: 'lab' })
+    expect(done(a)).not.toContain('zero')
+    a.setRange(3)
+    expect(done(a)).not.toContain('zero')
+    expect(checklistState(a).map((i) => i.id).indexOf('zero')).toBe(checklistState(a).map((i) => i.id).indexOf('meter') + 1)
+    zeroNeedle(a)
+    expect(Math.abs(a.zeroErrorFrac())).toBeLessThanOrEqual(ZERO_TOL_FRAC)
+    expect(done(a)).toContain('zero')
+    a.setZeroAdjust(a.zeroAdjust + 0.5)
+    expect(done(a)).not.toContain('zero')
+    expect(done(new Apparatus({ mode: 'explore' }))).toContain('zero')
+  })
   it('the cover step ticks with room lights off or the window cover closed', () => {
     const a = new Apparatus({ mode: 'lab' })
     expect(done(a)).toContain('cover')
@@ -343,6 +398,23 @@ describe('contextual coach', () => {
     const r = a.record(1.5)
     if (!r.ok) throw new Error('record failed')
     expect(coachCandidates(a, { type: 'record', typed: 1.5, measurement: r.measurement })).toEqual(['recordUnsettled', 'typedFar'])
+  })
+  it('nudges when a measurement was recorded with the needle zero still off, but not after zeroing', () => {
+    const a = new Apparatus({ mode: 'lab', seed: 2 })
+    a.setLamp(true); a.setRange(3); a.setSpeed(5); run(a, 70)
+    a.setArm(a.linePosition('yellow'))
+    a.pressKey(); run(a, 2); a.releaseKey(); run(a, 60)
+    const r1 = a.record(0.55)
+    if (!r1.ok) throw new Error('record failed')
+    expect(coachCandidates(a, { type: 'record', typed: 0.55, measurement: r1.measurement })).toContain('zeroOff')
+    a.pressKey(); run(a, 3) // capacitor empty again, as the procedure says
+    zeroNeedle(a)
+    a.releaseKey()
+    const r2 = a.record(0.59)
+    if (!r2.ok) throw new Error('record failed')
+    expect(coachCandidates(a, { type: 'record', typed: 0.59, measurement: r2.measurement })).not.toContain('zeroOff')
+    expect(en.coach.zeroOff).toMatch(/zero/i)
+    expect(es.coach.zeroOff).toMatch(/cero/i)
   })
   it('suggests opening the fit after four lines', () => {
     const a = new Apparatus({ mode: 'lab' })

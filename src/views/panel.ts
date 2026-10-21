@@ -114,6 +114,16 @@ export const mountPanel: MountView = (root, ctx): View => {
   })
   const rangeFlags = rangeBtns.map((b) => ({ chk: attrSetter(b, 'aria-checked'), tab: attrSetter(b, 'tabindex') }))
 
+  // Mechanical zero adjust (Lab only): the needle starts slightly off zero; turn the screw with the key held.
+  const zeroRow = htmlEl('div', { class: 'zero-row only-lab' }, meter)
+  const zeroLabel = htmlEl('label', { class: 'ctl-label', for: `zero-${uid}` }, zeroRow)
+  const zeroSlider = htmlEl('input', { id: `zero-${uid}`, type: 'range', min: -100, max: 100, step: 1, value: 0, class: 'bench-range zero-range' }, zeroRow)
+  const zeroHelp = htmlEl('p', { class: 'ctl-help', id: `zero-help-${uid}` }, zeroRow)
+  zeroSlider.setAttribute('aria-describedby', zeroHelp.id)
+  relabelers.push(() => { zeroLabel.textContent = S().zeroLabel; zeroSlider.setAttribute('aria-label', S().zeroAria); zeroHelp.textContent = S().zeroHelp })
+  listen(zeroSlider, 'input', () => { a.setZeroAdjust(Number(zeroSlider.value) / 100); update() })
+  const setZeroVal = (() => { let l = NaN; return (v: number) => { if (v !== l) { l = v; zeroSlider.value = String(v) } } })()
+
   // ---------------------------------------------------------------- key switch + amplifier + stopwatch
   const keyCard = card('key', 'card-key')
   const keyBtn = htmlEl('button', { type: 'button', class: 'key-btn', 'aria-pressed': 'false' }, keyCard)
@@ -221,6 +231,7 @@ export const mountPanel: MountView = (root, ctx): View => {
     else { setDigitalLbl(''); setDigitalVal('') }
     if (r.mode === 'explore' && r.needleValue_V !== null) { setSwDigitalLbl(`${s.digital}: `); setSwDigitalVal(`${fmtNum(r.needleValue_V, 3, ctx.lang())} V`) }
     else { setSwDigitalLbl(''); setSwDigitalVal('') }
+    setZeroVal(Math.round(a.zeroAdjust * 100))
     RANGES.forEach((rg, i) => {
       const on = rg === r.meterRange
       rangeFlags[i]!.chk(String(on))

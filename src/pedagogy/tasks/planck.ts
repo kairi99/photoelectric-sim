@@ -1,4 +1,5 @@
 import type { GuidedTask } from '../task.ts'
+import { ZERO_TOL_FRAC } from '../../apparatus/index.ts'
 import { expectedFitH_Js, settledLines } from '../task.ts'
 
 /** The student's h must be within this fraction of the h the bench model itself gives for the mode. */
@@ -19,6 +20,7 @@ export const task: GuidedTask = {
   hints: [
     { when: (a) => !a.lampOn, key: 'lampOff' },
     { when: (a) => a.meterRange === 'OFF', key: 'meterOff' },
+    { when: (a) => a.mode === 'lab' && a.meterRange !== 'OFF' && Math.abs(a.zeroErrorFrac()) > ZERO_TOL_FRAC && a.measurements.length === 0, key: 'zeroNeedle' },
     { when: (a) => a.hasReleased && !a.isSettled() && a.speed === 1, key: 'speedUp' },
     { when: (a) => settledLines(a).size < 4 && a.measurements.length > 0, key: 'moreLines' },
     {

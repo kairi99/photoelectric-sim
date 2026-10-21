@@ -7,13 +7,13 @@ import { IDEAL, LAB, getLine, linearFit, nuFromLambda, photonEnergy_eV, planckFr
 
 export type ControlId =
   | 'lamp' | 'arm' | 'windowCover' | 'beam' | 'key' | 'range' | 'speed'
-  | 'cathode' | 'stray' | 'dirty' | 'roomLights' | 'record' | 'fit'
+  | 'cathode' | 'stray' | 'dirty' | 'anode' | 'quartz' | 'zero' | 'roomLights' | 'record' | 'fit'
 
 /** Contextual nudge keys; the text lives in the pedagogy dictionary under `hints.<key>`. */
 export type HintKey =
   | 'lampOff' | 'moveArm' | 'meterOff' | 'meterRange' | 'pressKey' | 'releaseKey' | 'waitMore' | 'typeValue'
   | 'otherLine' | 'dimDown' | 'dimUp' | 'pickZinc' | 'toggleError' | 'moreLines' | 'openFit'
-  | 'warmUp' | 'speedUp' | 'fitOff' | 'findViolet' | 'putViolet'
+  | 'warmUp' | 'speedUp' | 'fitOff' | 'findViolet' | 'putViolet' | 'zeroNeedle'
 
 export interface TaskHint {
   when: (a: Apparatus) => boolean

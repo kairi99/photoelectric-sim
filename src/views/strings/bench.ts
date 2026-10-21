@@ -32,6 +32,8 @@ interface BenchStrings {
   cathodes: { photocell: string; Cs: string; Na: string; K: string; Zn: string }
   stray: string
   dirty: string
+  anode: string
+  quartz: string
   roomLights: string
   roomLightsHelpLab: string
   roomLightsHelpExplore: string
@@ -85,6 +87,8 @@ const en: BenchStrings = {
   cathodes: { photocell: 'Photocell (K layer, 1.9 eV)', Cs: 'Caesium (2.1 eV)', Na: 'Sodium (2.36 eV)', K: 'Pure potassium (2.29 eV)', Zn: 'Zinc (4.3 eV)' },
   stray: 'Stray light',
   dirty: 'Dirty photocell',
+  anode: 'Anode emission',
+  quartz: 'Quartz optics (UV passes)',
   roomLights: 'Room lights on',
   roomLightsHelpLab: 'Room light reaching the open window adds stray light; cover the window (12) or turn them off.',
   roomLightsHelpExplore: 'Only changes the view: the ideal instrument ignores room light.',
@@ -138,6 +142,8 @@ const es: BenchStrings = {
   cathodes: { photocell: 'Fotocélula (capa de K, 1,9 eV)', Cs: 'Cesio (2,1 eV)', Na: 'Sodio (2,36 eV)', K: 'Potasio puro (2,29 eV)', Zn: 'Cinc (4,3 eV)' },
   stray: 'Luz parásita',
   dirty: 'Fotocélula sucia',
+  anode: 'Emisión del ánodo',
+  quartz: 'Óptica de cuarzo (pasa el UV)',
   roomLights: 'Luces de la sala encendidas',
   roomLightsHelpLab: 'La luz de la sala que llega a la ventana abierta añade luz parásita; tapa la ventana (12) o apágalas.',
   roomLightsHelpExplore: 'Solo cambia la vista: el instrumento ideal ignora la luz de la sala.',

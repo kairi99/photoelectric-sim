@@ -1,11 +1,12 @@
 // Contextual coach: decides which one-off nudge (if any) an event deserves. Pure: the toast lives in card.ts.
 import type { Apparatus, Measurement } from '../apparatus/index.ts'
+import { ZERO_TOL_FRAC } from '../apparatus/index.ts'
 import { VISIBLE_LINES } from './task.ts'
 
-export type CoachKey = 'releasedMeterOff' | 'overRange' | 'recordUnsettled' | 'lampWarming' | 'armBetween' | 'typedFar' | 'openFit' | 'notDischarged'
+export type CoachKey = 'releasedMeterOff' | 'overRange' | 'recordUnsettled' | 'lampWarming' | 'armBetween' | 'typedFar' | 'openFit' | 'notDischarged' | 'zeroOff'
 
 /** Nudges that show every time they apply, not once per session (a safety net for a wrong measurement). */
-export const ALWAYS_KEYS: readonly CoachKey[] = ['notDischarged']
+export const ALWAYS_KEYS: readonly CoachKey[] = ['notDischarged', 'zeroOff']
 
 /** A typed value further than this from the needle triggers "read the needle again" (V). */
 export const TYPED_FAR_V = 0.15
@@ -25,6 +26,7 @@ export function coachCandidates(a: Apparatus, e: CoachEvent): CoachKey[] {
     if (a.lampOn && (r.lineOnCell === null || r.lineOnCell === 'uv')) out.push('armBetween')
   } else if (e.type === 'record') {
     if (e.measurement.lineId !== null && !e.measurement.dischargedSinceAlign) out.push('notDischarged')
+    if (a.mode === 'lab' && Math.abs(e.measurement.zeroErr_V) > ZERO_TOL_FRAC * (a.meterRange === 'OFF' ? 3 : a.meterRange)) out.push('zeroOff')
     if (!e.measurement.settled) out.push('recordUnsettled')
     if (a.mode === 'lab' && e.typed !== undefined && r.needleValue_V !== null && Math.abs(e.typed - r.needleValue_V) > TYPED_FAR_V) out.push('typedFar')
     const lines = new Set(a.measurements.map((m) => m.lineId).filter((l) => l && (VISIBLE_LINES as readonly string[]).includes(l)))

@@ -24,7 +24,7 @@ function loadControls(): boolean {
 }
 function saveControls(open: boolean): void { try { localStorage.setItem(CTL_KEY, open ? '1' : '0') } catch { /* ignore */ } }
 /** Controls that exist only in the 2D strip (no handle in the 3D scene). */
-const NO_3D_HANDLE = ['beam', 'cathode', 'stray', 'dirty']
+const NO_3D_HANDLE = ['beam', 'cathode', 'stray', 'dirty', 'anode', 'quartz']
 const SVG_NS = 'http://www.w3.org/2000/svg'
 function slidersIcon(): SVGElement {
   const svg = document.createElementNS(SVG_NS, 'svg')

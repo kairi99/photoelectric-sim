@@ -13,7 +13,7 @@ A browser-based, physics-driven simulation of the compact photoelectric-effect e
 **Two modes** (switch at the top of the page):
 
 - **Explore** is an ideal instrument. You see the true voltage as a digital readout, can change hidden physics (cathode material, error sources) and can run the clock at 20x. Good for building intuition and for what-if questions.
-- **Lab** is a realistic bench: reading noise, leakage, stray light, and an analog needle with no number that you must read yourself. It is **honour-based**: nothing stops a student from peeking at Explore mode or typing a value; the point is practice, not policing.
+- **Lab** is a realistic bench: reading noise, leakage, stray light, a back-current from the ring anode, a fuzzy thermal cutoff, slow lamp drift, and an analog needle with no number that you must read yourself, whose mechanical zero you have to adjust first and whose gain is only good to its accuracy class. It is **honour-based**: nothing stops a student from peeking at Explore mode or typing a value; the point is practice, not policing.
 
 **Guided tasks.** Open **Learn** and pick one of six tasks. Each follows predict, act, observe, explain, and is checked automatically against the model:
 
@@ -42,11 +42,11 @@ A browser-based, physics-driven simulation of the compact photoelectric-effect e
 
 ## The physics model in brief
 
-Einstein's relation e·U0 = h·ν − W: the capacitor charges until the photocurrent is stopped by the opposing voltage, so the plateau U0 grows linearly with the light frequency ν, and the slope of U0 against ν gives h/e. The model (`src/physics`) integrates the charging of the capacitor through the photocurrent (quantum yield from photon energy above threshold) against leakage, and reports the deterministic expectation; noise is a separate final step. As in the source experiment, the intercept is not the cathode work function but is set by the ring anode (contact potential).
+Einstein's relation e·U0 = h·ν − W: the capacitor charges until the photocurrent is stopped by the opposing voltage, so the plateau U0 grows linearly with the light frequency ν, and the slope of U0 against ν gives h/e. The model (`src/physics`) integrates the charging of the capacitor through the photocurrent against leakage, and reports the deterministic expectation; noise is a separate final step. The quantum yield follows a Fowler-type law (quadratic just above threshold, saturating smoothly); the line powers are a typical high-pressure Hg spectrum times a glass-optics transmission (fused quartz lets the 365 nm line through in Explore); in Lab the cutoff is smeared by the Fermi–Dirac edge at room temperature, the K-contaminated ring anode adds a reverse photocurrent, and the capacitor has a small dielectric absorption. As in the source experiment, the intercept is not the cathode work function but is set by the ring anode (contact potential).
 
 Every empirical parameter is listed in [`PARAMETERS.md`](PARAMETERS.md) with value, unit, source or fit, and date.
 
-**Calibration, honestly.** The Lab bench is calibrated with 4 free parameters against 4 data points, so a good match is not independent validation. The clean Lab fit gives **h ≈ 5.9·10⁻³⁴ J·s, about 11 % below the true 6.63·10⁻³⁴**. That is deliberate and realistic: leakage and stray light flatten the U0 vs ν line, as on a real bench. Explore mode with no error sources returns the true value. Tasks check h against the Lab model value, not against 6.63.
+**Calibration, honestly.** The Lab bench is calibrated with 4 free parameters against 4 data points, so a good match is not independent validation. The clean Lab fit gives **h ≈ 5.9·10⁻³⁴ J·s, about 11 % below the true 6.63·10⁻³⁴**. That is deliberate and realistic: leakage, the anode back-current, the thermal tail and stray light flatten the U0 vs ν line, as on a real bench (in the model the effects are not additive; see the breakdown in `PARAMETERS.md`). The four fitted parameters are the anode work function, the source brightness, the cell leakage and the stray-light fraction; the new effects use literature or assumed values, never extra fit knobs. Explore mode with no error sources returns the true value. Tasks check h against the Lab model value, not against 6.63.
 
 ## Architecture
 

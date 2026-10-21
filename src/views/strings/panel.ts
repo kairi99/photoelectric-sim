@@ -13,6 +13,9 @@ interface PanelStrings {
   rangeGroup: string
   rangeOff: string
   rangeOption: string // "{v} V"
+  zeroLabel: string
+  zeroAria: string
+  zeroHelp: string
   digital: string
   keyTitle: string
   keyLabel: string
@@ -45,6 +48,9 @@ const en: PanelStrings = {
   rangeGroup: 'Voltage range',
   rangeOff: 'Off',
   rangeOption: '{v} V',
+  zeroLabel: 'Zero adjust',
+  zeroAria: 'Needle zero adjust screw',
+  zeroHelp: 'Hold the key until the capacitor is empty, then turn this until the needle sits exactly on 0.',
   digital: 'Reading',
   keyTitle: 'Key switch',
   keyLabel: 'Hold to discharge',
@@ -77,6 +83,9 @@ const es: PanelStrings = {
   rangeGroup: 'Rango de tensión',
   rangeOff: 'Apagado',
   rangeOption: '{v} V',
+  zeroLabel: 'Ajuste del cero',
+  zeroAria: 'Tornillo de ajuste del cero de la aguja',
+  zeroHelp: 'Mantén pulsado el pulsador hasta que el condensador esté vacío y gira esto hasta que la aguja quede justo en 0.',
   digital: 'Lectura',
   keyTitle: 'Pulsador',
   keyLabel: 'Mantén para descargar',

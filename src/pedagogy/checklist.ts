@@ -1,9 +1,10 @@
 // Procedure checklist (leaflet steps). Pure: ticks come from apparatus state and procedureLog, no DOM.
 import type { Apparatus } from '../apparatus/index.ts'
+import { ZERO_TOL_FRAC } from '../apparatus/index.ts'
 import { VISIBLE_LINES } from './task.ts'
 
-export type ChecklistId = 'lamp' | 'meter' | 'cover' | 'line' | 'discharge' | 'release' | 'wait' | 'record' | 'lines' | 'fit'
-export const CHECKLIST_IDS: readonly ChecklistId[] = ['lamp', 'meter', 'cover', 'line', 'discharge', 'release', 'wait', 'record', 'lines', 'fit']
+export type ChecklistId = 'lamp' | 'meter' | 'zero' | 'cover' | 'line' | 'discharge' | 'release' | 'wait' | 'record' | 'lines' | 'fit'
+export const CHECKLIST_IDS: readonly ChecklistId[] = ['lamp', 'meter', 'zero', 'cover', 'line', 'discharge', 'release', 'wait', 'record', 'lines', 'fit']
 
 export interface ChecklistItem {
   id: ChecklistId
@@ -49,6 +50,7 @@ export function checklistState(a: Apparatus): ChecklistItem[] {
   return [
     { id: 'lamp', done: a.lampOn && r0.lampBrightness >= 0.99 },
     { id: 'meter', done: a.meterRange === 3 },
+    { id: 'zero', done: a.mode !== 'lab' || (a.meterRange !== 'OFF' && Math.abs(a.zeroErrorFrac()) <= ZERO_TOL_FRAC) },
     { id: 'cover', done: a.mode !== 'lab' || !a.roomLights || a.windowCover >= COVER_MIN },
     { id: 'line', done: line !== null && line !== 'uv' },
     { id: 'discharge', done: d >= 0 },
